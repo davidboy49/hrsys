@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { ImportResult } from "@/lib/employee-io"
 import { importEmployees } from "./import-action"
+import { useT } from "@/i18n/provider"
 
 export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const t = useT()
   const [file, setFile] = useState<File | null>(null)
   const [res, setRes] = useState<ImportResult | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -36,7 +38,7 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
       setErr(null)
       setRes(r)
       if (commit && r.created) {
-        toast.success(`${r.created} employees imported`)
+        toast.success(t("import.done", { n: r.created }))
         onOpenChange(false)
         reset()
       }
@@ -53,18 +55,18 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     >
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Import employees</DialogTitle>
-          <DialogDescription>Every row is checked first. Nothing is saved until all rows pass.</DialogDescription>
+          <DialogTitle>{t("import.title")}</DialogTitle>
+          <DialogDescription>{t("import.desc")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <Button variant="outline" size="sm" render={<a href="/employees/template" />}>
-            <Download /> Download template
+            <Download /> {t("import.template")}
           </Button>
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-6 text-center text-sm text-muted-foreground hover:bg-muted/40">
             <FileSpreadsheet className="size-6" />
-            {file ? <span className="font-medium text-foreground">{file.name}</span> : <span>Choose an .xlsx file</span>}
+            {file ? <span className="font-medium text-foreground">{file.name}</span> : <span>{t("import.choose")}</span>}
             <input
               ref={input}
               type="file"
@@ -88,31 +90,31 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             <div className="space-y-2 text-sm">
               <p className="flex items-center gap-2">
                 {res.issues.length === 0 ? <CheckCircle2 className="size-4 text-green-600" /> : <TriangleAlert className="size-4 text-amber-600" />}
-                {res.total} rows read · {res.valid} valid · {res.issues.length} with errors
+                {t("import.summary", { total: res.total, valid: res.valid, errors: res.issues.length })}
               </p>
               {res.issues.length > 0 && (
                 <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2 text-xs">
                   {res.issues.slice(0, 100).map((i) => (
                     <li key={i.row}>
-                      <span className="font-mono text-muted-foreground">Row {i.row}</span> {i.message}
+                      <span className="font-mono text-muted-foreground">{t("import.row", { n: i.row })}</span> {i.message}
                     </li>
                   ))}
                 </ul>
               )}
-              {res.issues.length > 0 && <p className="text-muted-foreground">Fix these rows in the file and check again.</p>}
+              {res.issues.length > 0 && <p className="text-muted-foreground">{t("import.fix")}</p>}
             </div>
           )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+            {t("common.close")}
           </Button>
           <Button variant="outline" disabled={!file || pending} onClick={() => run(false)}>
-            Check file
+            {t("import.check")}
           </Button>
           <Button disabled={!file || pending || !res || res.issues.length > 0 || res.valid === 0} onClick={() => run(true)}>
-            Import {res && res.valid > 0 && res.issues.length === 0 ? res.valid : ""}
+            {t("common.import")} {res && res.valid > 0 && res.issues.length === 0 ? res.valid : ""}
           </Button>
         </DialogFooter>
       </DialogContent>

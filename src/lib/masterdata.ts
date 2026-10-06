@@ -22,74 +22,74 @@ export type EntityDef = {
 }
 
 const BASIS = [
-  { value: "MONTH", label: "Per month" },
-  { value: "DAY", label: "Per day" },
-  { value: "HOUR", label: "Per hour" },
+  { value: "MONTH", label: "basis.MONTH" },
+  { value: "DAY", label: "basis.DAY" },
+  { value: "HOUR", label: "basis.HOUR" },
 ]
-const COLORS = ["green", "amber", "blue", "red", "gray"].map((c) => ({ value: c, label: c[0].toUpperCase() + c.slice(1) }))
+const COLORS = ["green", "amber", "blue", "red", "gray"].map((c) => ({ value: c, label: `color.${c}` }))
 
 export const ENTITIES: EntityDef[] = [
   {
-    key: "departments", label: "Departments", singular: "department", model: "department", hasEmployees: true,
+    key: "departments", label: "md.departments", singular: "md.departments.one", model: "department", hasEmployees: true,
     fields: [
-      { name: "code", label: "Code", type: "text", required: true, column: true },
-      { name: "name", label: "Name", type: "text", required: true, column: true },
-      { name: "parentId", label: "Parent department", type: "relation", of: "departments", column: true },
+      { name: "code", label: "mdf.code", type: "text", required: true, column: true },
+      { name: "name", label: "mdf.name", type: "text", required: true, column: true },
+      { name: "parentId", label: "mdf.parentId", type: "relation", of: "departments", column: true },
     ],
   },
   {
-    key: "designations", label: "Designations", singular: "designation", model: "designation", hasEmployees: true,
+    key: "designations", label: "md.designations", singular: "md.designations.one", model: "designation", hasEmployees: true,
     fields: [
-      { name: "code", label: "Code", type: "text", required: true, column: true },
-      { name: "name", label: "Name", type: "text", required: true, column: true },
-      { name: "departmentId", label: "Department", type: "relation", of: "departments", column: true },
+      { name: "code", label: "mdf.code", type: "text", required: true, column: true },
+      { name: "name", label: "mdf.name", type: "text", required: true, column: true },
+      { name: "departmentId", label: "mdf.departmentId", type: "relation", of: "departments", column: true },
     ],
   },
   {
-    key: "contract-types", label: "Contract types", singular: "contract type", model: "contractType", hasEmployees: true,
+    key: "contract-types", label: "md.contract-types", singular: "md.contract-types.one", model: "contractType", hasEmployees: true,
     fields: [
-      { name: "code", label: "Code", type: "text", required: true, column: true },
-      { name: "name", label: "Name", type: "text", required: true, column: true },
-      { name: "requiresEndDate", label: "Requires end date", type: "bool", column: true },
-      { name: "defaultRateBasis", label: "Default rate basis", type: "select", options: BASIS, required: true, column: true },
+      { name: "code", label: "mdf.code", type: "text", required: true, column: true },
+      { name: "name", label: "mdf.name", type: "text", required: true, column: true },
+      { name: "requiresEndDate", label: "mdf.requiresEndDate", type: "bool", column: true },
+      { name: "defaultRateBasis", label: "mdf.defaultRateBasis", type: "select", options: BASIS, required: true, column: true },
     ],
   },
   {
-    key: "statuses", label: "Employee statuses", singular: "status", model: "employeeStatus", hasEmployees: true,
+    key: "statuses", label: "md.statuses", singular: "md.statuses.one", model: "employeeStatus", hasEmployees: true,
     fields: [
-      { name: "code", label: "Code", type: "text", required: true, column: true },
-      { name: "name", label: "Name", type: "text", required: true, column: true },
-      { name: "color", label: "Colour", type: "select", options: COLORS, required: true, column: true },
-      { name: "countsAsActive", label: "Counts as active headcount", type: "bool", column: true },
+      { name: "code", label: "mdf.code", type: "text", required: true, column: true },
+      { name: "name", label: "mdf.name", type: "text", required: true, column: true },
+      { name: "color", label: "mdf.color", type: "select", options: COLORS, required: true, column: true },
+      { name: "countsAsActive", label: "mdf.countsAsActive", type: "bool", column: true },
     ],
   },
   {
-    key: "locations", label: "Locations", singular: "location", model: "location", hasEmployees: true,
+    key: "locations", label: "md.locations", singular: "md.locations.one", model: "location", hasEmployees: true,
     fields: [
-      { name: "code", label: "Code", type: "text", required: true, column: true },
-      { name: "name", label: "Name", type: "text", required: true, column: true },
-      { name: "address", label: "Address", type: "text", column: true },
-      { name: "latitude", label: "Latitude (for QR distance check)", type: "decimal" },
-      { name: "longitude", label: "Longitude (for QR distance check)", type: "decimal" },
-      { name: "radiusM", label: "Allowed distance (metres)", type: "number", required: true },
+      { name: "code", label: "mdf.code", type: "text", required: true, column: true },
+      { name: "name", label: "mdf.name", type: "text", required: true, column: true },
+      { name: "address", label: "mdf.address", type: "text", column: true },
+      { name: "latitude", label: "mdf.latitude", type: "decimal" },
+      { name: "longitude", label: "mdf.longitude", type: "decimal" },
+      { name: "radiusM", label: "mdf.radiusM", type: "number", required: true },
     ],
   },
   {
-    key: "shifts", label: "Shifts", singular: "shift", model: "shift", hasEmployees: true,
+    key: "shifts", label: "md.shifts", singular: "md.shifts.one", model: "shift", hasEmployees: true,
     fields: [
-      { name: "code", label: "Code", type: "text", required: true, column: true },
-      { name: "name", label: "Name", type: "text", required: true, column: true },
-      { name: "startTime", label: "Start", type: "time", required: true, column: true },
-      { name: "endTime", label: "End", type: "time", required: true, column: true },
-      { name: "graceMin", label: "Grace (minutes)", type: "number", required: true, column: true },
+      { name: "code", label: "mdf.code", type: "text", required: true, column: true },
+      { name: "name", label: "mdf.name", type: "text", required: true, column: true },
+      { name: "startTime", label: "mdf.startTime", type: "time", required: true, column: true },
+      { name: "endTime", label: "mdf.endTime", type: "time", required: true, column: true },
+      { name: "graceMin", label: "mdf.graceMin", type: "number", required: true, column: true },
     ],
   },
   {
-    key: "holidays", label: "Holidays", singular: "holiday", model: "holiday", hasEmployees: false,
+    key: "holidays", label: "md.holidays", singular: "md.holidays.one", model: "holiday", hasEmployees: false,
     fields: [
-      { name: "code", label: "Code", type: "text", required: true, column: true },
-      { name: "name", label: "Name", type: "text", required: true, column: true },
-      { name: "date", label: "Date", type: "date", required: true, column: true },
+      { name: "code", label: "mdf.code", type: "text", required: true, column: true },
+      { name: "name", label: "mdf.name", type: "text", required: true, column: true },
+      { name: "date", label: "mdf.date", type: "date", required: true, column: true },
     ],
   },
 ]

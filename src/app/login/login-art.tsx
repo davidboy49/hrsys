@@ -1,8 +1,10 @@
 import { Clock, Users } from "lucide-react"
+import { getT } from "@/i18n/server"
 
 const rise = (ms: number): React.CSSProperties => ({ animationDelay: `${ms}ms` })
 
-export function LoginArt() {
+export async function LoginArt() {
+  const t = await getT()
   return (
     <section className="art-panel hidden flex-col justify-between p-10 text-white lg:flex">
       <span className="art-blob b1" aria-hidden />
@@ -19,7 +21,7 @@ export function LoginArt() {
             <Users className="size-4" />
           </span>
           <span>
-            <small>Present today</small>
+            <small>{t("art.present")}</small>
             <b>38 / 40</b>
           </span>
         </div>
@@ -32,7 +34,7 @@ export function LoginArt() {
             <span className="art-pulse absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-lime-300" />
           </span>
           <span>
-            <small>Check in · Main door</small>
+            <small>{t("art.checkin")}</small>
             <b>08:02</b>
           </span>
         </div>
@@ -40,7 +42,7 @@ export function LoginArt() {
 
       <div className="art-pos art-rise" style={{ right: "12%", bottom: "20%", ...rise(1300) }} aria-hidden>
         <div className="art-card" style={{ flexDirection: "column", alignItems: "flex-start", animationDuration: "9s", animationDelay: "-4s" }}>
-          <small>Headcount</small>
+          <small>{t("art.headcount")}</small>
           <span className="flex h-10 items-end gap-1.5">
             {[40, 62, 48, 78, 66, 92].map((h, i) => (
               <span key={i} className="art-bar w-2.5 rounded-sm bg-white/80" style={{ height: `${h}%`, animationDelay: `${i * 280}ms` }} />
@@ -58,15 +60,15 @@ export function LoginArt() {
 
       <div className="space-y-3">
         <h1 className="art-rise max-w-[16ch] text-4xl font-semibold leading-tight" style={rise(250)}>
-          Everything about your people, in one place.
+          {t("login.tagline")}
         </h1>
         <p className="art-rise text-sm opacity-80" style={rise(450)}>
-          Employees · Attendance · Masterdata
+          {t("login.taglineSub")}
         </p>
       </div>
 
       <p className="art-rise text-xs opacity-70" style={rise(600)}>
-        Authorised users only. Activity is logged.
+        {t("login.notice")}
       </p>
     </section>
   )

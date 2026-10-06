@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { useT } from "@/i18n/provider"
 
 export type Option = { value: string; label: string }
 
@@ -12,13 +13,14 @@ export function MultiSelect({
   options,
   value,
   onChange,
-  placeholder = "Any",
+  placeholder,
 }: {
   options: Option[]
   value: string[]
   onChange: (v: string[]) => void
   placeholder?: string
 }) {
+  const t = useT()
   const [q, setQ] = useState("")
   const shown = options.filter((o) => o.label.toLowerCase().includes(q.toLowerCase()))
   const labels = options.filter((o) => value.includes(o.value)).map((o) => o.label)
@@ -30,11 +32,11 @@ export function MultiSelect({
           !labels.length && "text-muted-foreground",
         )}
       >
-        <span className="truncate">{labels.length === 0 ? placeholder : labels.length <= 2 ? labels.join(", ") : `${labels.length} selected`}</span>
+        <span className="truncate">{labels.length === 0 ? (placeholder ?? t("common.any")) : labels.length <= 2 ? labels.join(", ") : t("common.nSelected", { n: labels.length })}</span>
         <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64">
-        {options.length > 8 && <Input placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} />}
+        {options.length > 8 && <Input placeholder={t("common.search")} value={q} onChange={(e) => setQ(e.target.value)} />}
         <div className="max-h-56 overflow-y-auto">
           {shown.map((o) => (
             <label key={o.value} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted">
@@ -47,11 +49,11 @@ export function MultiSelect({
               <span className="truncate">{o.label}</span>
             </label>
           ))}
-          {!shown.length && <p className="px-2 py-1.5 text-muted-foreground">No matches</p>}
+          {!shown.length && <p className="px-2 py-1.5 text-muted-foreground">{t("common.noMatches")}</p>}
         </div>
         {value.length > 0 && (
           <button type="button" className="self-start px-2 text-xs text-primary hover:underline" onClick={() => onChange([])}>
-            Clear
+            {t("common.clear")}
           </button>
         )}
       </PopoverContent>

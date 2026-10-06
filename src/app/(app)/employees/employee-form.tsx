@@ -9,8 +9,10 @@ import { Label } from "@/components/ui/label"
 import { NativeSelect } from "@/components/native-select"
 import { PersonAvatar } from "@/components/avatar"
 import { saveEmployee, type FormState } from "./actions"
+import { useT } from "@/i18n/provider"
+import { labelFor } from "@/i18n/core"
 
-type Opt = { id: string; name: string; requiresEndDate?: boolean; defaultRateBasis?: string; departmentId?: string | null }
+type Opt = { id: string; code?: string; name: string; requiresEndDate?: boolean; defaultRateBasis?: string; departmentId?: string | null }
 
 export type FormValues = {
   employeeNo: string
@@ -46,6 +48,7 @@ export function EmployeeForm({
   values: FormValues
   lookups: { departments: Opt[]; designations: Opt[]; contractTypes: Opt[]; statuses: Opt[]; locations: Opt[]; shifts: Opt[] }
 }) {
+  const t = useT()
   const [state, action, pending] = useActionState(saveEmployee.bind(null, id), {} as FormState)
   const [v, setV] = useState(values)
   const [preview, setPreview] = useState<string | null>(values.photoUrl)
@@ -77,12 +80,12 @@ export function EmployeeForm({
   const text = (k: keyof FormValues, props: React.ComponentProps<typeof Input> = {}) => (
     <Input id={k} name={k} value={(v[k] as string) ?? ""} onChange={set(k)} aria-invalid={!!f[k]} {...props} />
   )
-  const select = (k: keyof FormValues, opts: Opt[], blank?: string) => (
+  const select = (k: keyof FormValues, opts: Opt[], blank?: string, prefix?: string) => (
     <NativeSelect id={k} name={k} value={(v[k] as string) ?? ""} onChange={set(k)} aria-invalid={!!f[k]}>
-      {(blank !== undefined || !v[k]) && <option value="">{blank ?? "Select…"}</option>}
+      {(blank !== undefined || !v[k]) && <option value="">{blank ?? t("common.select")}</option>}
       {opts.map((o) => (
         <option key={o.id} value={o.id}>
-          {o.name}
+          {prefix && o.code ? labelFor(t, prefix, o.code, o.name) : o.name}
         </option>
       ))}
     </NativeSelect>
@@ -97,7 +100,7 @@ export function EmployeeForm({
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" size="sm" render={<label htmlFor="photo" className="cursor-pointer" />}>
-              <Camera /> {preview && !removed ? "Replace photo" : "Upload photo"}
+              <Camera /> {preview && !removed ? t("form.photoReplace") : t("form.photoUpload")}
             </Button>
             {preview && !removed && (
               <Button
@@ -110,7 +113,7 @@ export function EmployeeForm({
                   if (el) el.value = ""
                 }}
               >
-                <Trash2 /> Remove
+                <Trash2 /> {t("common.remove")}
               </Button>
             )}
           </div>
@@ -124,7 +127,7 @@ export function EmployeeForm({
               const file = e.target.files?.[0]
               if (!file) return
               if (file.size > 2 * 1024 * 1024) {
-                setFileErr("Photo must be 2 MB or smaller.")
+                setFileErr(t("form.photoSize"))
                 e.target.value = ""
                 return
               }
@@ -133,54 +136,54 @@ export function EmployeeForm({
               setPreview(URL.createObjectURL(file))
             }}
           />
-          <p className="text-xs text-muted-foreground">JPG, PNG or WebP, up to 2 MB. A square photo works best.</p>
+          <p className="text-xs text-muted-foreground">{t("form.photoHint")}</p>
           {fileErr && <p className="text-xs text-destructive">{fileErr}</p>}
         </div>
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Personal</h2>
+        <h2 className="text-sm font-semibold">{t("form.personal")}</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {field("nameEn", "Full name (English)", text("nameEn", { required: true }))}
-          {field("nameKm", "Full name (Khmer)", text("nameKm", { lang: "km" }))}
+          {field("nameEn", t("form.nameEn"), text("nameEn", { required: true }))}
+          {field("nameKm", t("form.nameKm"), text("nameKm", { lang: "km" }))}
           {field(
             "gender",
-            "Gender",
+            t("form.gender"),
             <NativeSelect id="gender" name="gender" value={v.gender} onChange={set("gender")}>
               <option value="">—</option>
-              <option value="MALE">Male</option>
-              <option value="FEMALE">Female</option>
-              <option value="OTHER">Other</option>
+              <option value="MALE">{t("gender.MALE")}</option>
+              <option value="FEMALE">{t("gender.FEMALE")}</option>
+              <option value="OTHER">{t("gender.OTHER")}</option>
             </NativeSelect>,
           )}
-          {field("dob", "Date of birth", text("dob", { type: "date" }))}
-          {field("phone", "Phone", text("phone", { type: "tel" }))}
-          {field("email", "Email", text("email", { type: "email" }))}
-          {field("nationalId", "National ID", text("nationalId"))}
-          <div className="sm:col-span-2">{field("address", "Address", text("address"))}</div>
+          {field("dob", t("form.dob"), text("dob", { type: "date" }))}
+          {field("phone", t("form.phone"), text("phone", { type: "tel" }))}
+          {field("email", t("form.email"), text("email", { type: "email" }))}
+          {field("nationalId", t("form.nationalId"), text("nationalId"))}
+          <div className="sm:col-span-2">{field("address", t("form.address"), text("address"))}</div>
         </div>
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Job</h2>
+        <h2 className="text-sm font-semibold">{t("form.job")}</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {field("employeeNo", "Employee ID", text("employeeNo", { required: true, className: "font-mono" }))}
-          {field("departmentId", "Department", select("departmentId", lookups.departments))}
-          {field("designationId", "Designation", select("designationId", desigs))}
-          {field("statusId", "Status", select("statusId", lookups.statuses))}
-          {field("joiningDate", "Joining date", text("joiningDate", { type: "date", required: true }))}
-          {field("locationId", "Location", select("locationId", lookups.locations, "—"))}
-          {field("shiftId", "Shift", select("shiftId", lookups.shifts, "—"))}
-          {field("zkPin", "ZKTeco PIN", text("zkPin", { className: "font-mono" }), "The number this person enters on the attendance device.")}
+          {field("employeeNo", t("form.employeeNo"), text("employeeNo", { required: true, className: "font-mono" }))}
+          {field("departmentId", t("emp.department"), select("departmentId", lookups.departments))}
+          {field("designationId", t("emp.designation"), select("designationId", desigs))}
+          {field("statusId", t("emp.status"), select("statusId", lookups.statuses, undefined, "status"))}
+          {field("joiningDate", t("emp.joining"), text("joiningDate", { type: "date", required: true }))}
+          {field("locationId", t("form.location"), select("locationId", lookups.locations, "—"))}
+          {field("shiftId", t("form.shift"), select("shiftId", lookups.shifts, "—"))}
+          {field("zkPin", t("form.zkPin"), text("zkPin", { className: "font-mono" }), t("form.zkPinHint"))}
         </div>
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Contract and rate</h2>
+        <h2 className="text-sm font-semibold">{t("form.contractRate")}</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {field(
             "contractTypeId",
-            "Contract type",
+            t("form.contractType"),
             <NativeSelect
               id="contractTypeId"
               name="contractTypeId"
@@ -191,50 +194,50 @@ export function EmployeeForm({
                 setV((s) => ({ ...s, contractTypeId: e.target.value, rateBasis: !id && c?.defaultRateBasis ? c.defaultRateBasis : s.rateBasis }))
               }}
             >
-              <option value="">Select…</option>
+              <option value="">{t("common.select")}</option>
               {lookups.contractTypes.map((o) => (
                 <option key={o.id} value={o.id}>
-                  {o.name}
+                  {labelFor(t, "contract", o.code ?? "", o.name)}
                 </option>
               ))}
             </NativeSelect>,
           )}
-          {field("contractEnd", ct?.requiresEndDate ? "Contract end (required)" : "Contract end", text("contractEnd", { type: "date" }))}
+          {field("contractEnd", ct?.requiresEndDate ? t("form.contractEndReq") : t("form.contractEnd"), text("contractEnd", { type: "date" }))}
           <div />
-          {field("rateAmount", "Rate", text("rateAmount", { type: "number", step: "0.01", min: "0", required: true }))}
+          {field("rateAmount", t("emp.rate"), text("rateAmount", { type: "number", step: "0.01", min: "0", required: true }))}
           {field(
             "rateBasis",
-            "Rate basis",
+            t("form.rateBasis"),
             <NativeSelect id="rateBasis" name="rateBasis" value={v.rateBasis} onChange={set("rateBasis")}>
-              <option value="MONTH">Per month</option>
-              <option value="DAY">Per day</option>
-              <option value="HOUR">Per hour</option>
+              <option value="MONTH">{t("basis.MONTH")}</option>
+              <option value="DAY">{t("basis.DAY")}</option>
+              <option value="HOUR">{t("basis.HOUR")}</option>
             </NativeSelect>,
           )}
           {field(
             "currency",
-            "Currency",
+            t("form.currency"),
             <NativeSelect id="currency" name="currency" value={v.currency} onChange={set("currency")}>
               <option value="USD">USD</option>
               <option value="KHR">KHR</option>
             </NativeSelect>,
-            id ? "Changing the rate adds an entry to rate history." : undefined,
+            id ? t("form.rateHint") : undefined,
           )}
         </div>
       </section>
 
       {state.error && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {state.error}
+          {state.error ? t(state.error) : null}
         </p>
       )}
       <div className="sticky bottom-0 -mx-4 flex justify-end gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
         <Button variant="outline" render={<Link href={id ? `/employees/${id}` : "/employees"} />}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button type="submit" disabled={pending}>
           {pending && <Loader2 className="animate-spin" />}
-          {id ? "Save changes" : "Create employee"}
+          {id ? t("form.saveChanges") : t("form.create")}
         </Button>
       </div>
     </form>

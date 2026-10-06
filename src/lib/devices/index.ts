@@ -5,7 +5,7 @@ import type { DeviceAdapter, DeviceRow } from "./types"
 /** QR devices receive punches when people scan; there is nothing to pull. */
 class QrAdapter implements DeviceAdapter {
   async testConnection() {
-    return { ok: true, message: "QR attendance needs no connection" }
+    return { ok: true, message: "dev.qr.ok" }
   }
   async fetchPunches() {
     return []

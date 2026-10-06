@@ -9,11 +9,14 @@ import { fmtDateTime } from "@/lib/format"
 import { logout } from "@/app/login/actions"
 import { Button } from "@/components/ui/button"
 import { ScanClient } from "./scan-client"
+import { getT, titleOf } from "@/i18n/server"
+import { LanguageSwitcher } from "@/components/language-switcher"
 
-export const metadata = { title: "Check in or out" }
+export const generateMetadata = titleOf("scan.title")
 export const dynamic = "force-dynamic"
 
 export default async function ScanPage({ searchParams }: { searchParams: Promise<{ t?: string }> }) {
+  const t = await getT()
   const sp = await searchParams
   const token = typeof sp.t === "string" ? sp.t : ""
   const user = await getSession()
@@ -41,51 +44,52 @@ export default async function ScanPage({ searchParams }: { searchParams: Promise
           PeopleDesk
         </div>
         <div className="flex items-center gap-1">
+          <LanguageSwitcher />
           {atLeast(user.role, "MANAGER") && (
             <Button variant="ghost" size="sm" render={<Link href="/" />}>
-              Dashboard
+              {t("nav.dashboard")}
             </Button>
           )}
           <form action={logout}>
             <Button variant="ghost" size="sm" type="submit">
-              Sign out
+              {t("nav.signOut")}
             </Button>
           </form>
         </div>
       </header>
 
       <section>
-        <p className="text-sm text-muted-foreground">Signed in as</p>
+        <p className="text-sm text-muted-foreground">{t("scan.signedInAs")}</p>
         <h1 className="text-xl font-semibold tracking-tight">{emp?.nameEn ?? user.name}</h1>
         {emp && <p className="text-sm text-muted-foreground">{emp.employeeNo}</p>}
       </section>
 
       {!emp ? (
         <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-          Your login is not linked to an employee record yet, so punches cannot be saved. Ask HR to link your account in Settings → Users and roles.
+          {t("scan.notLinked")}
         </p>
       ) : token && check?.ok && loc ? (
         <ScanClient token={token} suggested={suggested} location={loc.name} needsGeo={loc.latitude != null} />
       ) : token ? (
         <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-          {check && !check.ok && check.reason === "expired" ? "This QR code has expired. Scan the code on the screen again." : "This QR code is not valid. Scan the code on the office screen."}
+          {check && !check.ok && check.reason === "expired" ? t("scan.err.expired") : t("scan.err.invalid")}
         </p>
       ) : (
         <div className="flex items-start gap-3 rounded-lg border p-4 text-sm">
           <QrCode className="mt-0.5 size-5 shrink-0 text-primary" />
-          <p>Scan the QR code on the office screen with your phone camera to check in or out.</p>
+          <p>{t("scan.howTo")}</p>
         </div>
       )}
 
       {emp && (
         <section className="space-y-2">
-          <h2 className="text-sm font-semibold">Your recent punches</h2>
+          <h2 className="text-sm font-semibold">{t("scan.recent")}</h2>
           <ul className="divide-y rounded-lg border text-sm">
-            {recent.length === 0 && <li className="p-3 text-muted-foreground">Nothing yet.</li>}
+            {recent.length === 0 && <li className="p-3 text-muted-foreground">{t("scan.none")}</li>}
             {recent.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 p-3">
                 <span>
-                  <span className="font-medium">{p.type === "IN" ? "Check in" : "Check out"}</span>
+                  <span className="font-medium">{p.type === "IN" ? t("att.checkIn") : t("att.checkOut")}</span>
                   <span className="block text-xs text-muted-foreground">{p.device.name}</span>
                 </span>
                 <span className="tabular-nums text-muted-foreground">{fmtDateTime(p.punchedAt)}</span>

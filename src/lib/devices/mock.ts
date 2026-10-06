@@ -21,7 +21,7 @@ export class MockAdapter implements DeviceAdapter {
     const users = await db.employee.count({
       where: { deletedAt: null, zkPin: { not: null }, ...(this.device.locationId ? { locationId: this.device.locationId } : {}) },
     })
-    return { ok: true, message: "Mock device reachable", users }
+    return { ok: true, message: "dev.mock.ok", users }
   }
 
   async fetchPunches(since: Date | null): Promise<RawPunch[]> {

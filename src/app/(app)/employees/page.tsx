@@ -1,15 +1,19 @@
 import { db } from "@/lib/db"
 import { atLeast, requireRole } from "@/lib/session"
 import { buildOrderBy, buildWhere, employeeInclude, lookups, parseFilters, SORTS, type SP } from "@/lib/employees"
-import { fmtDate, fmtRate } from "@/lib/format"
+import { BASIS_KEY, fmtDate, fmtRate } from "@/lib/format"
+import { getLocale, getT, titleOf } from "@/i18n/server"
+import { labelFor } from "@/i18n/core"
 import { PageHeader } from "@/components/page-header"
 import { Toolbar } from "./toolbar"
 import { EmployeeTable, type Row } from "./employee-table"
 
-export const metadata = { title: "Employees" }
+export const generateMetadata = titleOf("nav.employees")
 export const dynamic = "force-dynamic"
 
 export default async function EmployeesPage({ searchParams }: { searchParams: Promise<SP> }) {
+  const t = await getT()
+  const locale = await getLocale()
   const user = await requireRole("MANAGER")
   const sp = await searchParams
   const f = parseFilters(sp)
@@ -34,25 +38,26 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
   const rows: Row[] = emps.map((e) => ({
     id: e.id,
     employeeNo: e.employeeNo,
-    name: e.nameEn,
+    name: locale === "km" && e.nameKm ? e.nameKm : e.nameEn,
     photoUrl: e.photoUrl,
     designation: e.designation.name,
     department: e.department.name,
     joining: fmtDate(e.joiningDate),
-    contract: e.contractType.name,
+    contract: labelFor(t, "contract", e.contractType.code, e.contractType.name),
     contractEnd: e.contractEnd ? fmtDate(e.contractEnd) : null,
-    rate: canEdit ? fmtRate(e.rateAmount, e.rateBasis, e.currency) : "",
-    statusName: e.status.name,
+    rate: canEdit ? fmtRate(e.rateAmount, e.rateBasis, e.currency, t(BASIS_KEY[e.rateBasis])) : "",
+    statusName: labelFor(t, "status", e.status.code, e.status.name),
     statusColor: e.status.color,
   }))
   const opt = (xs: { id: string; name: string }[]) => xs.map((x) => ({ value: x.id, label: x.name }))
+  const optCoded = (prefix: string) => (xs: { id: string; name: string; code: string }[]) => xs.map((x) => ({ value: x.id, label: labelFor(t, prefix, x.code, x.name) }))
 
   return (
     <>
-      <PageHeader title="Employees" description={`${all} employees · ${activeCount} active`} />
+      <PageHeader title={t("nav.employees")} description={t("emp.summary", { all, active: activeCount })} />
       <div className="space-y-3">
         <Toolbar
-          opts={{ departments: opt(lk.departments), designations: opt(lk.designations), contractTypes: opt(lk.contractTypes), statuses: opt(lk.statuses) }}
+          opts={{ departments: opt(lk.departments), designations: opt(lk.designations), contractTypes: optCoded("contract")(lk.contractTypes), statuses: optCoded("status")(lk.statuses) }}
           canEdit={canEdit}
           canExport={canEdit}
         />

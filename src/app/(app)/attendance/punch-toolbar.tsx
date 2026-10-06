@@ -9,11 +9,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { MultiSelect, type Option } from "@/components/multi-select"
 import { NativeSelect } from "@/components/native-select"
 import { useQueryParams } from "@/lib/use-query-params"
+import { useT } from "@/i18n/provider"
 
 type F = { from: string; to: string; device: string[]; dept: string[]; type: string; match: string }
 const csv = (s: string | null) => (s ? s.split(",").filter(Boolean) : [])
 
 export function PunchToolbar({ devices, departments, canExport }: { devices: Option[]; departments: Option[]; canExport: boolean }) {
+  const t = useT()
   const { sp, set } = useQueryParams()
   const [q, setQ] = useState(sp.get("q") ?? "")
   const [open, setOpen] = useState(false)
@@ -39,11 +41,11 @@ export function PunchToolbar({ devices, departments, canExport }: { devices: Opt
   const name = (o: Option[], id: string) => o.find((x) => x.value === id)?.label ?? id
 
   const chips: { k: string; text: string; clear: () => void }[] = []
-  if (applied.from || applied.to) chips.push({ k: "date", text: `Date: ${applied.from || "…"} – ${applied.to || "…"}`, clear: () => set({ from: null, to: null }) })
-  if (applied.device.length) chips.push({ k: "device", text: `Device: ${applied.device.map((d) => name(devices, d)).join(", ")}`, clear: () => set({ device: null }) })
-  if (applied.dept.length) chips.push({ k: "dept", text: `Department: ${applied.dept.map((d) => name(departments, d)).join(", ")}`, clear: () => set({ dept: null }) })
-  if (applied.type) chips.push({ k: "type", text: applied.type === "IN" ? "Check in" : "Check out", clear: () => set({ type: null }) })
-  if (applied.match) chips.push({ k: "match", text: applied.match === "unknown" ? "Unknown PIN only" : "Matched only", clear: () => set({ match: null }) })
+  if (applied.from || applied.to) chips.push({ k: "date", text: `${t("common.date")}: ${applied.from || "…"} – ${applied.to || "…"}`, clear: () => set({ from: null, to: null }) })
+  if (applied.device.length) chips.push({ k: "device", text: `${t("att.device")}: ${applied.device.map((d) => name(devices, d)).join(", ")}`, clear: () => set({ device: null }) })
+  if (applied.dept.length) chips.push({ k: "dept", text: `${t("emp.department")}: ${applied.dept.map((d) => name(departments, d)).join(", ")}`, clear: () => set({ dept: null }) })
+  if (applied.type) chips.push({ k: "type", text: applied.type === "IN" ? t("att.checkIn") : t("att.checkOut"), clear: () => set({ type: null }) })
+  if (applied.match) chips.push({ k: "match", text: applied.match === "unknown" ? t("att.unknownOnly") : t("att.matchedOnly"), clear: () => set({ match: null }) })
 
   const clearAll = () => {
     setQ("")
@@ -78,7 +80,7 @@ export function PunchToolbar({ devices, departments, canExport }: { devices: Opt
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-52 flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, employee ID or PIN" className="pl-8" aria-label="Search punches" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("att.searchPh")} className="pl-8" aria-label={t("att.searchAria")} />
         </div>
         <Button
           variant={count ? "secondary" : "outline"}
@@ -88,18 +90,18 @@ export function PunchToolbar({ devices, departments, canExport }: { devices: Opt
             setOpen((o) => !o)
           }}
         >
-          <Filter /> Advanced filter
+          <Filter /> {t("filter.advanced")}
           {count > 0 && <span className="ml-0.5 rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">{count}</span>}
         </Button>
         {canExport && (
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" />}>
-              <Download /> Export
+              <Download /> {t("common.export")}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Current filtered result</DropdownMenuLabel>
-              <DropdownMenuItem render={<a href={exportHref("xlsx")} />}>Excel (.xlsx)</DropdownMenuItem>
-              <DropdownMenuItem render={<a href={exportHref("csv")} />}>CSV (.csv)</DropdownMenuItem>
+              <DropdownMenuLabel>{t("export.current")}</DropdownMenuLabel>
+              <DropdownMenuItem render={<a href={exportHref("xlsx")} />}>{t("export.xlsx")}</DropdownMenuItem>
+              <DropdownMenuItem render={<a href={exportHref("csv")} />}>{t("export.csv")}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -109,54 +111,54 @@ export function PunchToolbar({ devices, departments, canExport }: { devices: Opt
         <div className="rounded-lg border bg-muted/40 p-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1.5">
-              <Label htmlFor="pf-from">From date</Label>
+              <Label htmlFor="pf-from">{t("filter.fromDate")}</Label>
               <Input id="pf-from" type="date" value={draft.from} onChange={(e) => setDraft({ ...draft, from: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="pf-to">To date</Label>
+              <Label htmlFor="pf-to">{t("filter.toDate")}</Label>
               <Input id="pf-to" type="date" value={draft.to} onChange={(e) => setDraft({ ...draft, to: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label>Device</Label>
+              <Label>{t("att.device")}</Label>
               <MultiSelect options={devices} value={draft.device} onChange={(v) => setDraft({ ...draft, device: v })} />
             </div>
             <div className="space-y-1.5">
-              <Label>Department</Label>
+              <Label>{t("emp.department")}</Label>
               <MultiSelect options={departments} value={draft.dept} onChange={(v) => setDraft({ ...draft, dept: v })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="pf-type">Type</Label>
+              <Label htmlFor="pf-type">{t("att.type")}</Label>
               <NativeSelect id="pf-type" value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}>
-                <option value="">Any</option>
-                <option value="IN">Check in</option>
-                <option value="OUT">Check out</option>
+                <option value="">{t("common.any")}</option>
+                <option value="IN">{t("att.checkIn")}</option>
+                <option value="OUT">{t("att.checkOut")}</option>
               </NativeSelect>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="pf-match">Match</Label>
+              <Label htmlFor="pf-match">{t("att.match")}</Label>
               <NativeSelect id="pf-match" value={draft.match} onChange={(e) => setDraft({ ...draft, match: e.target.value })}>
-                <option value="">All</option>
-                <option value="matched">Matched employees</option>
-                <option value="unknown">Unknown PIN</option>
+                <option value="">{t("common.all")}</option>
+                <option value="matched">{t("att.matchedEmp")}</option>
+                <option value="unknown">{t("att.unknownPin")}</option>
               </NativeSelect>
             </div>
             <div className="flex items-end gap-1.5 sm:col-span-2">
               <Button type="button" variant="outline" size="sm" onClick={() => quick(0)}>
-                Today
+                {t("filter.today")}
               </Button>
               <Button type="button" variant="outline" size="sm" onClick={() => quick(6)}>
-                Last 7 days
+                {t("filter.last7")}
               </Button>
               <Button type="button" variant="outline" size="sm" onClick={() => quick(29)}>
-                Last 30 days
+                {t("filter.last30")}
               </Button>
             </div>
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="ghost" onClick={clearAll}>
-              Clear all
+              {t("filter.clearAll")}
             </Button>
-            <Button onClick={apply}>Apply filters</Button>
+            <Button onClick={apply}>{t("filter.apply")}</Button>
           </div>
         </div>
       )}
@@ -169,7 +171,7 @@ export function PunchToolbar({ devices, departments, canExport }: { devices: Opt
             </button>
           ))}
           <button onClick={clearAll} className="px-1 text-xs text-muted-foreground hover:text-foreground">
-            Clear all
+            {t("filter.clearAll")}
           </button>
         </div>
       )}

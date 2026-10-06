@@ -85,7 +85,7 @@ export async function syncDevice(deviceId: string) {
     const punches = await adapter.fetchPunches(since)
     const r = await ingestPunches(deviceId, punches)
     await db.device.update({ where: { id: deviceId }, data: { lastSyncAt: new Date(), status: "ONLINE" } })
-    await db.syncLog.create({ data: { deviceId, startedAt: started, records: r.inserted, ok: true, message: r.unknown ? `${r.unknown} punches from unknown PINs` : null } })
+    await db.syncLog.create({ data: { deviceId, startedAt: started, records: r.inserted, ok: true, message: r.unknown ? `unknown:${r.unknown}` : null } })
     return { ok: true as const, ...r }
   } catch (e) {
     const message = (e as Error).message

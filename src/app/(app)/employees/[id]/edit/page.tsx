@@ -4,12 +4,14 @@ import { requireRole } from "@/lib/session"
 import { lookups } from "@/lib/employees"
 import { toInput } from "@/lib/format"
 import { PageHeader } from "@/components/page-header"
+import { getT, titleOf } from "@/i18n/server"
 import { EmployeeForm, type FormValues } from "../../employee-form"
 
-export const metadata = { title: "Edit employee" }
+export const generateMetadata = titleOf("emp.edit")
 export const dynamic = "force-dynamic"
 
 export default async function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
+  const t = await getT()
   await requireRole("HR")
   const { id } = await params
   const [e, lk] = await Promise.all([db.employee.findFirst({ where: { id, deletedAt: null } }), lookups()])
@@ -36,7 +38,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
   }
   return (
     <>
-      <PageHeader title={`Edit ${e.nameEn}`} description={e.employeeNo} />
+      <PageHeader title={t("emp.editName", { name: e.nameEn })} description={e.employeeNo} />
       <EmployeeForm id={e.id} values={values} lookups={lk} />
     </>
   )

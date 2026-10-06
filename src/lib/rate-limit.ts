@@ -34,7 +34,6 @@ export async function clientIp() {
   return (h.get("x-forwarded-for")?.split(",")[0] ?? h.get("x-real-ip") ?? "unknown").trim()
 }
 
-export const waitText = (seconds: number) => {
-  const m = Math.ceil(seconds / 60)
-  return seconds < 90 ? `${seconds} seconds` : `${m} minutes`
-}
+/** "45 seconds" or "5 minutes", in the viewer's language. */
+export const waitText = (seconds: number, t: (key: string, vars?: Record<string, string | number>) => string) =>
+  seconds < 90 ? t("wait.seconds", { n: seconds }) : t("wait.minutes", { n: Math.ceil(seconds / 60) })

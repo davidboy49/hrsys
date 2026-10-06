@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
 import { toDate } from "@/lib/format"
 import { nextEmployeeNo } from "@/lib/employees"
+import type { TFn } from "@/i18n/core"
 
 export const HEADERS = [
   "Employee ID",
@@ -68,16 +69,8 @@ export async function buildWorkbook(rows: (string | number)[][], sheet = "Employ
   return wb
 }
 
-export const TEMPLATE_NOTES = [
-  "Fill one employee per row on the Employees sheet. Do not rename or reorder the columns.",
-  "Required: Name (English), Department, Designation, Joining Date, Contract, Rate, Status.",
-  "Employee ID: leave blank to generate the next number automatically.",
-  "Department, Designation, Contract and Status must match a name or code from Masterdata.",
-  "Dates use yyyy-mm-dd (for example 2024-03-15).",
-  "Gender: MALE, FEMALE or OTHER. Rate Basis: MONTH, DAY or HOUR (defaults to MONTH). Currency defaults to USD.",
-  "Contract types that require an end date (for example Fixed term) need a Contract End.",
-  "ZK PIN is the number the employee uses on the ZKTeco device. It must be unique.",
-]
+/** Translation keys for the notes sheet of the import template (column headers stay in English so imports always match). */
+export const TEMPLATE_NOTE_KEYS = ["tpl.note1", "tpl.note2", "tpl.note3", "tpl.note4", "tpl.note5", "tpl.note6", "tpl.note7", "tpl.note8"]
 
 export type ImportIssue = { row: number; message: string }
 export type ImportResult = { total: number; valid: number; created: number; issues: ImportIssue[] }
@@ -95,16 +88,16 @@ function cellText(v: ExcelJS.CellValue): string {
 
 const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s))
 
-export async function runImport(buf: ArrayBuffer, commit: boolean): Promise<ImportResult> {
+export async function runImport(buf: ArrayBuffer, commit: boolean, t: TFn): Promise<ImportResult> {
   const wb = new ExcelJS.Workbook()
   await wb.xlsx.load(buf)
   const ws = wb.getWorksheet("Employees") ?? wb.worksheets[0]
-  if (!ws) throw new Error("The file has no sheets.")
-  if (ws.rowCount > 5001) throw new Error("The file has more than 5,000 rows. Split it into smaller files.")
+  if (!ws) throw new Error(t("io.noSheets"))
+  if (ws.rowCount > 5001) throw new Error(t("io.tooMany"))
 
   const head = HEADERS.map((_, i) => cellText(ws.getRow(1).getCell(i + 1).value))
   const bad = HEADERS.filter((h, i) => head[i].toLowerCase() !== h.toLowerCase())
-  if (bad.length) throw new Error(`Columns do not match the template. Check: ${bad.join(", ")}. Download a fresh template.`)
+  if (bad.length) throw new Error(t("io.columns", { cols: bad.join(", ") }))
 
   const [depts, desigs, cts, sts] = await Promise.all([
     db.department.findMany(),
@@ -142,30 +135,30 @@ export async function runImport(buf: ArrayBuffer, commit: boolean): Promise<Impo
     const errs: string[] = []
     const [no, nameEn, nameKm, gender, dob, phone, email, dept, desig, joining, contract, cend, rate, basis, cur, status, pin] = c
 
-    if (!nameEn) errs.push("Name (English) is required")
+    if (!nameEn) errs.push(t("io.err.name"))
     const dp = find(depts, dept)
-    if (!dp) errs.push(`Department "${dept}" not found`)
+    if (!dp) errs.push(t("io.err.dept", { v: dept }))
     const ds = find(desigs, desig)
-    if (!ds) errs.push(`Designation "${desig}" not found`)
+    if (!ds) errs.push(t("io.err.desig", { v: desig }))
     const ct = find(cts, contract)
-    if (!ct) errs.push(`Contract "${contract}" not found`)
+    if (!ct) errs.push(t("io.err.contract", { v: contract }))
     const st = find(sts, status)
-    if (!st) errs.push(`Status "${status}" not found`)
-    if (!isDate(joining)) errs.push("Joining Date must be yyyy-mm-dd")
-    if (dob && !isDate(dob)) errs.push("Date of Birth must be yyyy-mm-dd")
-    if (cend && !isDate(cend)) errs.push("Contract End must be yyyy-mm-dd")
-    if (ct?.requiresEndDate && !cend) errs.push(`${ct.name} needs a Contract End`)
+    if (!st) errs.push(t("io.err.status", { v: status }))
+    if (!isDate(joining)) errs.push(t("io.err.joining"))
+    if (dob && !isDate(dob)) errs.push(t("io.err.dob"))
+    if (cend && !isDate(cend)) errs.push(t("io.err.cend"))
+    if (ct?.requiresEndDate && !cend) errs.push(t("io.err.needEnd", { v: ct.name }))
     const rateN = Number(rate)
-    if (rate === "" || Number.isNaN(rateN) || rateN < 0) errs.push("Rate must be a number")
+    if (rate === "" || Number.isNaN(rateN) || rateN < 0) errs.push(t("io.err.rate"))
     const bs = (basis || "MONTH").toUpperCase()
-    if (!["MONTH", "DAY", "HOUR"].includes(bs)) errs.push("Rate Basis must be MONTH, DAY or HOUR")
+    if (!["MONTH", "DAY", "HOUR"].includes(bs)) errs.push(t("io.err.basis"))
     const g = gender.toUpperCase()
-    if (g && !["MALE", "FEMALE", "OTHER"].includes(g)) errs.push("Gender must be MALE, FEMALE or OTHER")
-    if (email && !/^\S+@\S+\.\S+$/.test(email)) errs.push("Email is not valid")
+    if (g && !["MALE", "FEMALE", "OTHER"].includes(g)) errs.push(t("io.err.gender"))
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) errs.push(t("io.err.email"))
 
     let empNo = no
     if (empNo) {
-      if (existingNos.has(empNo) || seenNos.has(empNo)) errs.push(`Employee ID ${empNo} already exists`)
+      if (existingNos.has(empNo) || seenNos.has(empNo)) errs.push(t("io.err.dupId", { v: empNo }))
     } else if (seq !== null) {
       do {
         empNo = `${prefix}${String(seq).padStart(4, "0")}`
@@ -173,7 +166,7 @@ export async function runImport(buf: ArrayBuffer, commit: boolean): Promise<Impo
       } while (existingNos.has(empNo) || seenNos.has(empNo))
     }
     if (pin) {
-      if (existingPins.has(pin) || seenPins.has(pin)) errs.push(`ZK PIN ${pin} already in use`)
+      if (existingPins.has(pin) || seenPins.has(pin)) errs.push(t("io.err.dupPin", { v: pin }))
     }
 
     if (errs.length) {

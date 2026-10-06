@@ -2,17 +2,18 @@
 
 import Link from "next/link"
 import { useState, useTransition } from "react"
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown, MoreHorizontal, Trash2, X } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { NativeSelect } from "@/components/native-select"
+import { Pager } from "@/components/pager"
 import { PersonAvatar } from "@/components/avatar"
 import { StatusBadge } from "@/components/status-badge"
 import { useQueryParams } from "@/lib/use-query-params"
+import { useT } from "@/i18n/provider"
 import { deleteEmployees } from "./actions"
 
 export type Row = {
@@ -31,13 +32,13 @@ export type Row = {
 }
 
 const COLS: { key: string; label: string; sort?: string; right?: boolean; rate?: boolean }[] = [
-  { key: "employee", label: "Employee", sort: "nameEn" },
-  { key: "designation", label: "Designation", sort: "designation" },
-  { key: "department", label: "Department", sort: "department" },
-  { key: "joining", label: "Joining date", sort: "joiningDate" },
-  { key: "contract", label: "Contract", sort: "contract" },
-  { key: "rate", label: "Rate", sort: "rateAmount", right: true, rate: true },
-  { key: "status", label: "Status", sort: "status" },
+  { key: "employee", label: "emp.employee", sort: "nameEn" },
+  { key: "designation", label: "emp.designation", sort: "designation" },
+  { key: "department", label: "emp.department", sort: "department" },
+  { key: "joining", label: "emp.joining", sort: "joiningDate" },
+  { key: "contract", label: "emp.contract", sort: "contract" },
+  { key: "rate", label: "emp.rate", sort: "rateAmount", right: true, rate: true },
+  { key: "status", label: "emp.status", sort: "status" },
 ]
 
 export function EmployeeTable({
@@ -61,12 +62,12 @@ export function EmployeeTable({
   showRate: boolean
   canExport: boolean
 }) {
+  const t = useT()
   const { set } = useQueryParams()
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [confirm, setConfirm] = useState<string[] | null>(null)
   const [pending, start] = useTransition()
 
-  const pages = Math.max(1, Math.ceil(total / size))
   const allOn = rows.length > 0 && rows.every((r) => sel.has(r.id))
   const toggle = (id: string) =>
     setSel((s) => {
@@ -85,20 +86,13 @@ export function EmployeeTable({
     const ids = confirm ?? []
     start(async () => {
       const r = await deleteEmployees(ids)
-      toast.success(`${r.count} employee${r.count === 1 ? "" : "s"} deleted`)
+      toast.success(t("emp.deleted", { n: r.count }))
       setSel(new Set())
       setConfirm(null)
     })
   }
 
-  const from = total === 0 ? 0 : (page - 1) * size + 1
-  const to = Math.min(total, page * size)
 
-  const pageNums: (number | "…")[] = []
-  for (let i = 1; i <= pages; i++) {
-    if (i === 1 || i === pages || Math.abs(i - page) <= 1) pageNums.push(i)
-    else if (pageNums[pageNums.length - 1] !== "…") pageNums.push("…")
-  }
 
   const exportSel = () => {
     const p = new URLSearchParams()
@@ -111,19 +105,19 @@ export function EmployeeTable({
     <div className="rounded-lg border">
       {sel.size > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-b bg-primary/5 px-3 py-2 text-sm">
-          <span className="font-medium">{sel.size} selected</span>
+          <span className="font-medium">{t("common.nSelected", { n: sel.size })}</span>
           {canExport && (
             <Button size="sm" variant="outline" render={<a href={exportSel()} />}>
-              Export selected
+              {t("emp.exportSelected")}
             </Button>
           )}
           {canEdit && (
             <Button size="sm" variant="destructive" onClick={() => setConfirm([...sel])}>
-              <Trash2 /> Delete
+              <Trash2 /> {t("common.delete")}
             </Button>
           )}
           <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>
-            <X /> Clear
+            <X /> {t("common.clear")}
           </Button>
         </div>
       )}
@@ -131,13 +125,13 @@ export function EmployeeTable({
         <TableHeader>
           <TableRow className="bg-muted/50 hover:bg-muted/50">
             <TableHead className="w-10">
-              <Checkbox checked={allOn} onCheckedChange={(c) => setSel(c ? new Set(rows.map((r) => r.id)) : new Set())} aria-label="Select all on page" />
+              <Checkbox checked={allOn} onCheckedChange={(c) => setSel(c ? new Set(rows.map((r) => r.id)) : new Set())} aria-label={t("table.selectAll")} />
             </TableHead>
-            <TableHead className="w-12 font-mono text-[11px] uppercase tracking-wide">No</TableHead>
+            <TableHead className="w-12 font-mono text-[11px] uppercase tracking-wide">{t("table.no")}</TableHead>
             {COLS.filter((c) => showRate || !c.rate).map((c) => (
               <TableHead key={c.key} className={c.right ? "text-right" : undefined}>
                 <button onClick={() => sortBy(c.sort!)} className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-wide hover:text-foreground">
-                  {c.label}
+                  {t(c.label)}
                   {sort === c.sort ? dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" /> : <ChevronsUpDown className="size-3 opacity-40" />}
                 </button>
               </TableHead>
@@ -149,14 +143,14 @@ export function EmployeeTable({
           {rows.length === 0 && (
             <TableRow>
               <TableCell colSpan={11} className="h-32 text-center text-muted-foreground">
-                No employees match these filters.
+                {t("emp.noMatch")}
               </TableCell>
             </TableRow>
           )}
           {rows.map((r, i) => (
             <TableRow key={r.id} data-state={sel.has(r.id) ? "selected" : undefined}>
               <TableCell>
-                <Checkbox checked={sel.has(r.id)} onCheckedChange={() => toggle(r.id)} aria-label={`Select ${r.name}`} />
+                <Checkbox checked={sel.has(r.id)} onCheckedChange={() => toggle(r.id)} aria-label={t("table.select", { name: r.name })} />
               </TableCell>
               <TableCell className="font-mono text-muted-foreground tabular-nums">{(page - 1) * size + i + 1}</TableCell>
               <TableCell>
@@ -181,16 +175,16 @@ export function EmployeeTable({
               </TableCell>
               <TableCell>
                 <DropdownMenu>
-                  <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`Actions for ${r.name}`} />}>
+                  <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t("table.actionsFor", { name: r.name })} />}>
                     <MoreHorizontal />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem render={<Link href={`/employees/${r.id}`} />}>View</DropdownMenuItem>
-                    {canEdit && <DropdownMenuItem render={<Link href={`/employees/${r.id}/edit`} />}>Edit</DropdownMenuItem>}
+                    <DropdownMenuItem render={<Link href={`/employees/${r.id}`} />}>{t("common.view")}</DropdownMenuItem>
+                    {canEdit && <DropdownMenuItem render={<Link href={`/employees/${r.id}/edit`} />}>{t("common.edit")}</DropdownMenuItem>}
                     {canEdit && <DropdownMenuSeparator />}
                     {canEdit && (
                       <DropdownMenuItem variant="destructive" onClick={() => setConfirm([r.id])}>
-                        Delete
+                        {t("common.delete")}
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
@@ -201,55 +195,20 @@ export function EmployeeTable({
         </TableBody>
       </Table>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t px-3 py-2.5 text-sm text-muted-foreground">
-        <div className="flex items-center gap-3">
-          <span>
-            Showing {from}–{to} of {total}
-          </span>
-          <label className="flex items-center gap-1.5">
-            <span className="sr-only sm:not-sr-only">Per page</span>
-            <NativeSelect value={size} onChange={(e) => set({ size: e.target.value })} className="h-7 w-[4.5rem]" aria-label="Rows per page">
-              {[10, 25, 50, 100].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </NativeSelect>
-          </label>
-        </div>
-        <nav className="flex items-center gap-1" aria-label="Pagination">
-          <Button variant="outline" size="icon-sm" disabled={page <= 1} onClick={() => set({ page: String(page - 1) }, false)} aria-label="Previous page">
-            <ChevronLeft />
-          </Button>
-          {pageNums.map((n, i) =>
-            n === "…" ? (
-              <span key={`e${i}`} className="px-1">
-                …
-              </span>
-            ) : (
-              <Button key={n} variant={n === page ? "default" : "outline"} size="icon-sm" onClick={() => set({ page: String(n) }, false)} aria-current={n === page ? "page" : undefined}>
-                {n}
-              </Button>
-            ),
-          )}
-          <Button variant="outline" size="icon-sm" disabled={page >= pages} onClick={() => set({ page: String(page + 1) }, false)} aria-label="Next page">
-            <ChevronRight />
-          </Button>
-        </nav>
-      </div>
+      <Pager total={total} page={page} size={size} />
 
       <Dialog open={confirm !== null} onOpenChange={(o) => !o && setConfirm(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete {confirm?.length === 1 ? "employee" : `${confirm?.length} employees`}?</DialogTitle>
-            <DialogDescription>They are removed from lists and attendance matching. Records are kept in the database so history stays intact.</DialogDescription>
+            <DialogTitle>{confirm?.length === 1 ? t("emp.deleteOne") : t("emp.deleteMany", { n: confirm?.length ?? 0 })}</DialogTitle>
+            <DialogDescription>{t("emp.deleteNote")}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirm(null)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button variant="destructive" onClick={doDelete} disabled={pending}>
-              Delete
+              {t("common.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

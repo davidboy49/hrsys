@@ -4,8 +4,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { NativeSelect } from "@/components/native-select"
 import { useQueryParams } from "@/lib/use-query-params"
+import { useT } from "@/i18n/provider"
 
 export function Pager({ total, page, size }: { total: number; page: number; size: number }) {
+  const t = useT()
   const { set } = useQueryParams()
   const pages = Math.max(1, Math.ceil(total / size))
   const from = total === 0 ? 0 : (page - 1) * size + 1
@@ -21,11 +23,11 @@ export function Pager({ total, page, size }: { total: number; page: number; size
     <div className="flex flex-wrap items-center justify-between gap-3 border-t px-3 py-2.5 text-sm text-muted-foreground">
       <div className="flex items-center gap-3">
         <span>
-          Showing {from}–{to} of {total}
+          {t("pager.showing", { from, to, total })}
         </span>
         <label className="flex items-center gap-1.5">
-          <span className="sr-only sm:not-sr-only">Per page</span>
-          <NativeSelect value={size} onChange={(e) => set({ size: e.target.value })} className="h-7 w-[4.5rem]" aria-label="Rows per page">
+          <span className="sr-only sm:not-sr-only">{t("pager.perPage")}</span>
+          <NativeSelect value={size} onChange={(e) => set({ size: e.target.value })} className="h-7 w-[4.5rem]" aria-label={t("pager.rowsPerPage")}>
             {[10, 25, 50, 100].map((n) => (
               <option key={n} value={n}>
                 {n}
@@ -34,8 +36,8 @@ export function Pager({ total, page, size }: { total: number; page: number; size
           </NativeSelect>
         </label>
       </div>
-      <nav className="flex items-center gap-1" aria-label="Pagination">
-        <Button variant="outline" size="icon-sm" disabled={page <= 1} onClick={() => set({ page: String(page - 1) }, false)} aria-label="Previous page">
+      <nav className="flex items-center gap-1" aria-label={t("pager.pagination")}>
+        <Button variant="outline" size="icon-sm" disabled={page <= 1} onClick={() => set({ page: String(page - 1) }, false)} aria-label={t("pager.prev")}>
           <ChevronLeft />
         </Button>
         {nums.map((n, i) =>
@@ -49,7 +51,7 @@ export function Pager({ total, page, size }: { total: number; page: number; size
             </Button>
           ),
         )}
-        <Button variant="outline" size="icon-sm" disabled={page >= pages} onClick={() => set({ page: String(page + 1) }, false)} aria-label="Next page">
+        <Button variant="outline" size="icon-sm" disabled={page >= pages} onClick={() => set({ page: String(page + 1) }, false)} aria-label={t("pager.next")}>
           <ChevronRight />
         </Button>
       </nav>

@@ -34,11 +34,11 @@ function sniffImage(b: Buffer): "image/jpeg" | "image/png" | "image/webp" | null
 }
 
 export async function savePhoto(file: File, name: string): Promise<string> {
-  if (!OK.includes(file.type)) throw new Error("Photo must be a JPG, PNG or WebP image.")
-  if (file.size > MAX_PHOTO) throw new Error("Photo must be 2 MB or smaller.")
+  if (!OK.includes(file.type)) throw new Error("upload.err.type")
+  if (file.size > MAX_PHOTO) throw new Error("form.photoSize")
   const body = Buffer.from(await file.arrayBuffer())
   const real = sniffImage(body)
-  if (!real) throw new Error("That file is not a valid JPG, PNG or WebP image.")
+  if (!real) throw new Error("upload.err.invalid")
   const ext = real === "image/png" ? "png" : real === "image/webp" ? "webp" : "jpg"
   const file_name = `${name}-${Date.now()}.${ext}`
 
@@ -47,7 +47,7 @@ export async function savePhoto(file: File, name: string): Promise<string> {
     await s3().send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body, ContentType: real }))
     return `s3:${key}`
   }
-  if (process.env.VERCEL) throw new Error("Photo storage is not configured. Add the Neon bucket variables (AWS_ENDPOINT_URL_S3, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION) to the Vercel project.")
+  if (process.env.VERCEL) throw new Error("upload.err.config")
   const dir = path.join(process.cwd(), "public", "uploads")
   await fs.mkdir(dir, { recursive: true })
   await fs.writeFile(path.join(dir, file_name), body)

@@ -5,8 +5,9 @@ import { atLeast, requireUser } from "@/lib/session"
 import { fmtDate, localDateKey } from "@/lib/format"
 import { PageHeader } from "@/components/page-header"
 import { PersonAvatar } from "@/components/avatar"
+import { getT, titleOf } from "@/i18n/server"
 
-export const metadata = { title: "Dashboard" }
+export const generateMetadata = titleOf("nav.dashboard")
 export const dynamic = "force-dynamic"
 
 function Stat({ label, value, sub, href }: { label: string; value: number | string; sub?: string; href?: string }) {
@@ -21,6 +22,7 @@ function Stat({ label, value, sub, href }: { label: string; value: number | stri
 }
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
+  const t = await getT()
   const user = await requireUser()
   const sp = await searchParams
   if (!atLeast(user.role, "MANAGER")) redirect("/scan")
@@ -48,18 +50,18 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <PageHeader title="Dashboard" description={`Hello, ${user.name.split(" ")[0]}. Here is where things stand today.`} />
-      {sp.denied && <p className="mb-4 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">You do not have access to that page.</p>}
+      <PageHeader title={t("nav.dashboard")} description={t("dash.hello", { name: user.name.split(" ")[0] })} />
+      {sp.denied && <p className="mb-4 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">{t("dash.denied")}</p>}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Active headcount" value={active} sub={`${total} on record`} href="/employees" />
-        <Stat label="Joined, last 30 days" value={joiners} href="/employees?sort=joiningDate&dir=desc" />
-        <Stat label="Contracts ending, 60 days" value={ending} sub={ending ? "Review below" : "Nothing due"} />
-        <Stat label="Present today" value={presentToday} sub={`of ${active} active`} href="/attendance?tab=daily" />
+        <Stat label={t("dash.active")} value={active} sub={t("dash.onRecord", { n: total })} href="/employees" />
+        <Stat label={t("dash.joined")} value={joiners} href="/employees?sort=joiningDate&dir=desc" />
+        <Stat label={t("dash.ending")} value={ending} sub={ending ? t("dash.reviewBelow") : t("dash.nothingDue")} />
+        <Stat label={t("dash.present")} value={presentToday} sub={t("dash.ofActive", { n: active })} href="/attendance?tab=daily" />
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <section className="rounded-lg border p-4">
-          <h2 className="mb-3 text-sm font-semibold">Headcount by department</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("dash.byDept")}</h2>
           <ul className="space-y-2.5">
             {rows.map((r) => (
               <li key={r.name} className="grid grid-cols-[8rem_1fr_2rem] items-center gap-3 text-sm">
@@ -70,12 +72,12 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 <span className="text-right tabular-nums text-muted-foreground">{r.n}</span>
               </li>
             ))}
-            {rows.length === 0 && <li className="text-sm text-muted-foreground">No data yet.</li>}
+            {rows.length === 0 && <li className="text-sm text-muted-foreground">{t("common.noData")}</li>}
           </ul>
         </section>
 
         <section className="rounded-lg border p-4">
-          <h2 className="mb-3 text-sm font-semibold">Contracts ending soon</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("dash.endingSoon")}</h2>
           <ul className="divide-y">
             {endingList.map((e) => {
               const days = Math.ceil((e.contractEnd!.getTime() - now.getTime()) / 864e5)
@@ -88,17 +90,17 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                   </Link>
                   <span className="text-right text-xs">
                     {fmtDate(e.contractEnd)}
-                    <span className={days <= 30 ? "block text-amber-600 dark:text-amber-400" : "block text-muted-foreground"}>in {days} days</span>
+                    <span className={days <= 30 ? "block text-amber-600 dark:text-amber-400" : "block text-muted-foreground"}>{t("dash.inDays", { n: days })}</span>
                   </span>
                 </li>
               )
             })}
-            {endingList.length === 0 && <li className="py-2 text-sm text-muted-foreground">No fixed-term contracts end in the next 60 days.</li>}
+            {endingList.length === 0 && <li className="py-2 text-sm text-muted-foreground">{t("dash.noEnding")}</li>}
           </ul>
         </section>
 
         <section className="rounded-lg border p-4">
-          <h2 className="mb-3 text-sm font-semibold">Recently added</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("dash.recent")}</h2>
           <ul className="divide-y">
             {recent.map((e) => (
               <li key={e.id} className="flex items-center gap-3 py-2 text-sm">
@@ -115,11 +117,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
         {canEdit && unknownPunches > 0 && (
           <section className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
-            <h2 className="text-sm font-semibold">Attendance needs attention</h2>
+            <h2 className="text-sm font-semibold">{t("dash.attention")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {unknownPunches} punches came from PINs that are not assigned to an employee.{" "}
+              {t("dash.unknownPins", { n: unknownPunches })}{" "}
               <Link href="/attendance?match=unknown" className="text-primary hover:underline">
-                Review them
+                {t("dash.reviewThem")}
               </Link>
               .
             </p>

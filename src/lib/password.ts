@@ -8,9 +8,9 @@ const COMMON = new Set([
 /** One rule for every place a password is set: at least 10 characters, not trivially guessable. */
 export const passwordSchema = z
   .string()
-  .min(10, "Password must be at least 10 characters")
-  .max(128, "Password is too long")
-  .refine((p) => !COMMON.has(p.toLowerCase()), "That password is too common. Choose another")
-  .refine((p) => new Set(p).size >= 5, "Use a mix of different characters")
+  .min(10, "pw.min")
+  .max(128, "pw.max")
+  .refine((p) => !COMMON.has(p.toLowerCase()), "pw.common")
+  .refine((p) => new Set(p).size >= 5, "pw.mix")
 
 export const BCRYPT_COST = 12

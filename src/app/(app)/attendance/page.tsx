@@ -9,10 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils"
 import { DeviceCards, SyncAllButton, type DeviceView } from "./device-cards"
 import { PunchToolbar } from "./punch-toolbar"
+import { getT, titleOf } from "@/i18n/server"
+import type { TFn } from "@/i18n/core"
 import { Pager } from "@/components/pager"
 import { buildPunchWhere, parsePunchFilters } from "@/lib/punches"
 
-export const metadata = { title: "Attendance" }
+export const generateMetadata = titleOf("nav.attendance")
 export const dynamic = "force-dynamic"
 
 type SP = Record<string, string | string[] | undefined>
@@ -33,6 +35,7 @@ const pill = (tone: "ok" | "warn" | "bad" | "mute", text: string) => (
 )
 
 export default async function AttendancePage({ searchParams }: { searchParams: Promise<SP> }) {
+  const t = await getT()
   const user = await requireRole("MANAGER")
   const sp = await searchParams
   const tab = sp.tab === "daily" || sp.tab === "devices" ? sp.tab : "punches"
@@ -41,21 +44,21 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const today = localDateKey(new Date())
 
   const tabs = [
-    { id: "punches", label: "Punches" },
-    { id: "daily", label: "Daily records" },
-    { id: "devices", label: "Devices and sync" },
+    { id: "punches", label: t("att.tab.punches") },
+    { id: "daily", label: t("att.tab.daily") },
+    { id: "devices", label: t("att.tab.devices") },
   ]
 
   return (
     <>
       <PageHeader
-        title="Attendance"
-        description="ZKTeco devices run in mock mode until a real device is connected."
+        title={t("nav.attendance")}
+        description={t("att.desc")}
         actions={
           canEdit ? (
             <>
               <Button variant="outline" render={<Link href="/attendance/qr" />}>
-                <QrCode /> QR attendance
+                <QrCode /> {t("att.qr")}
               </Button>
               {tab !== "daily" && <SyncAllButton />}
             </>
@@ -81,7 +84,15 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   )
 }
 
+function syncMessage(m: string, t: TFn) {
+  if (m.startsWith("unknown:")) return t("sync.unknown", { n: m.slice(8) })
+  if (m === "push") return t("sync.push")
+  if (m.startsWith("dev.")) return t(m)
+  return m
+}
+
 async function Devices({ canEdit, isAdmin, today }: { canEdit: boolean; isAdmin: boolean; today: string }) {
+  const t = await getT()
   const start = fromLocal(today, "00:00")
   const [devices, locations, logs, userCounts, todayCounts] = await Promise.all([
     db.device.findMany({ orderBy: { name: "asc" } }),
@@ -100,7 +111,7 @@ async function Devices({ canEdit, isAdmin, today }: { canEdit: boolean; isAdmin:
     mode: d.mode,
     status: d.status,
     locationId: d.locationId,
-    lastSync: d.lastSyncAt ? fmtDateTime(d.lastSyncAt) : "Never",
+    lastSync: d.lastSyncAt ? fmtDateTime(d.lastSyncAt) : t("att.never"),
     todayPunches: todayCounts.find((c) => c.deviceId === d.id)?._count ?? 0,
     users: userCounts.find((c) => c.locationId === d.locationId)?._count ?? 0,
   }))
@@ -108,22 +119,22 @@ async function Devices({ canEdit, isAdmin, today }: { canEdit: boolean; isAdmin:
     <div className="space-y-6">
       <DeviceCards devices={view} locations={locations.map((l) => ({ id: l.id, name: l.name }))} canEdit={canEdit} isAdmin={isAdmin} />
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold">Sync log</h2>
+        <h2 className="text-sm font-semibold">{t("att.syncLog")}</h2>
         <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Started</TableHead>
-                <TableHead>Device</TableHead>
-                <TableHead className="text-right">New records</TableHead>
-                <TableHead>Result</TableHead>
+                <TableHead>{t("att.started")}</TableHead>
+                <TableHead>{t("att.device")}</TableHead>
+                <TableHead className="text-right">{t("att.newRecords")}</TableHead>
+                <TableHead>{t("att.result")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {logs.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
-                    No syncs yet. Press Sync all now.
+                    {t("att.noSyncs")}
                   </TableCell>
                 </TableRow>
               )}
@@ -133,7 +144,7 @@ async function Devices({ canEdit, isAdmin, today }: { canEdit: boolean; isAdmin:
                   <TableCell>{l.device.name}</TableCell>
                   <TableCell className="text-right tabular-nums">{l.records}</TableCell>
                   <TableCell>
-                    {l.ok ? pill("ok", "Success") : pill("bad", "Failed")} {l.message && <span className="ml-1 text-xs text-muted-foreground">{l.message}</span>}
+                    {l.ok ? pill("ok", t("att.success")) : pill("bad", t("att.failed"))} {l.message && <span className="ml-1 text-xs text-muted-foreground">{syncMessage(l.message, t)}</span>}
                   </TableCell>
                 </TableRow>
               ))}
@@ -146,6 +157,7 @@ async function Devices({ canEdit, isAdmin, today }: { canEdit: boolean; isAdmin:
 }
 
 async function Punches({ sp, canExport }: { sp: SP; canExport: boolean }) {
+  const t = await getT()
   const f = parsePunchFilters(sp)
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? ""
   const size = [10, 25, 50, 100].includes(Number(one(sp.size))) ? Number(one(sp.size)) : 25
@@ -174,31 +186,31 @@ async function Punches({ sp, canExport }: { sp: SP; canExport: boolean }) {
       />
       {unknownCount > 0 && f.match !== "unknown" && (
         <p className="text-sm text-muted-foreground">
-          {unknownCount} punches have an unknown PIN.{" "}
+          {t("att.unknownCount", { n: unknownCount })}{" "}
           <Link href="/attendance?match=unknown" className="text-primary hover:underline">
-            Show them
+            {t("att.showThem")}
           </Link>
-          . To fix one, set that PIN on the employee, then press Sync all now.
+          . {t("att.unknownFix")}
         </p>
       )}
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead className="font-mono text-[11px] uppercase tracking-wide">Time</TableHead>
-              <TableHead className="font-mono text-[11px] uppercase tracking-wide">PIN</TableHead>
-              <TableHead className="font-mono text-[11px] uppercase tracking-wide">Employee</TableHead>
-              <TableHead className="font-mono text-[11px] uppercase tracking-wide">Department</TableHead>
-              <TableHead className="font-mono text-[11px] uppercase tracking-wide">Device</TableHead>
-              <TableHead className="font-mono text-[11px] uppercase tracking-wide">Type</TableHead>
-              <TableHead className="font-mono text-[11px] uppercase tracking-wide">Match</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">{t("att.time")}</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">{t("att.pin")}</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">{t("emp.employee")}</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">{t("emp.department")}</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">{t("att.device")}</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">{t("att.type")}</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">{t("att.match")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="h-28 text-center text-muted-foreground">
-                  No punches match. Change the filter, or press Sync all now.
+                  {t("att.noPunches")}
                 </TableCell>
               </TableRow>
             )}
@@ -217,8 +229,8 @@ async function Punches({ sp, canExport }: { sp: SP; canExport: boolean }) {
                 </TableCell>
                 <TableCell>{p.employee?.department.name ?? "—"}</TableCell>
                 <TableCell>{p.device.name}</TableCell>
-                <TableCell>{p.type === "IN" ? "Check in" : "Check out"}</TableCell>
-                <TableCell>{p.employee ? pill("ok", "Matched") : pill("warn", "Unknown PIN")}</TableCell>
+                <TableCell>{p.type === "IN" ? t("att.checkIn") : t("att.checkOut")}</TableCell>
+                <TableCell>{p.employee ? pill("ok", t("att.matched")) : pill("warn", t("att.unknownPin"))}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -230,6 +242,7 @@ async function Punches({ sp, canExport }: { sp: SP; canExport: boolean }) {
 }
 
 async function Daily({ date }: { date: string }) {
+  const t = await getT()
   const d = new Date(date + "T00:00:00.000Z")
   const [rows, total] = await Promise.all([
     db.attendanceDaily.findMany({ where: { date: d }, include: { employee: { include: { department: true } } }, orderBy: { employee: { employeeNo: "asc" } } }),
@@ -243,33 +256,33 @@ async function Daily({ date }: { date: string }) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
         <Link href={`/attendance?tab=daily&date=${prev}`} className="rounded-md border px-2.5 py-1 text-sm hover:bg-muted">
-          ‹ Prev
+          ‹ {t("common.prev")}
         </Link>
         <span className="min-w-32 text-center text-sm font-medium">{fmtDate(d)}</span>
         <Link href={`/attendance?tab=daily&date=${next}`} className="rounded-md border px-2.5 py-1 text-sm hover:bg-muted">
-          Next ›
+          {t("common.next")} ›
         </Link>
         <span className="ml-auto text-sm text-muted-foreground">
-          {rows.length} present of {total} active · {late} late · {incomplete} missing check-out · {Math.max(0, total - rows.length)} no punch
+          {t("att.dailySummary", { present: rows.length, total, late, incomplete, none: Math.max(0, total - rows.length) })}
         </span>
       </div>
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Employee</TableHead>
-              <TableHead>Department</TableHead>
-              <TableHead>In</TableHead>
-              <TableHead>Out</TableHead>
-              <TableHead className="text-right">Worked</TableHead>
-              <TableHead>State</TableHead>
+              <TableHead>{t("emp.employee")}</TableHead>
+              <TableHead>{t("emp.department")}</TableHead>
+              <TableHead>{t("att.in")}</TableHead>
+              <TableHead>{t("att.out")}</TableHead>
+              <TableHead className="text-right">{t("att.worked")}</TableHead>
+              <TableHead>{t("att.state")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No records for this day. Sync the devices on the first tab.
+                  {t("att.noDaily")}
                 </TableCell>
               </TableRow>
             )}
@@ -284,8 +297,8 @@ async function Daily({ date }: { date: string }) {
                 <TableCell>{r.employee.department.name}</TableCell>
                 <TableCell className="tabular-nums">{fmtTime(r.firstIn)}</TableCell>
                 <TableCell className="tabular-nums">{fmtTime(r.lastOut)}</TableCell>
-                <TableCell className="text-right tabular-nums">{r.workedMin ? `${Math.floor(r.workedMin / 60)}h ${r.workedMin % 60}m` : "—"}</TableCell>
-                <TableCell>{r.state === "PRESENT" ? pill("ok", "Present") : r.state === "LATE" ? pill("warn", `Late ${r.lateMin}m`) : r.state === "INCOMPLETE" ? pill("bad", "No check-out") : pill("mute", "Absent")}</TableCell>
+                <TableCell className="text-right tabular-nums">{r.workedMin ? t("time.hm", { h: Math.floor(r.workedMin / 60), m: r.workedMin % 60 }) : "—"}</TableCell>
+                <TableCell>{r.state === "PRESENT" ? pill("ok", t("daily.PRESENT")) : r.state === "LATE" ? pill("warn", t("att.lateBy", { m: r.lateMin })) : r.state === "INCOMPLETE" ? pill("bad", t("daily.INCOMPLETE")) : pill("mute", t("daily.ABSENT"))}</TableCell>
               </TableRow>
             ))}
           </TableBody>

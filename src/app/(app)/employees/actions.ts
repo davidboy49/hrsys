@@ -9,54 +9,56 @@ import { audit } from "@/lib/audit"
 import { toDate } from "@/lib/format"
 import { nextEmployeeNo } from "@/lib/employees"
 import { removePhoto, savePhoto } from "@/lib/uploads"
+import { getT } from "@/i18n/server"
 
 export type FormState = { error?: string; fields?: Record<string, string> }
 
 const opt = (s: z.ZodString) => s.optional().or(z.literal("")).transform((v) => v || null)
 
 const schema = z.object({
-  employeeNo: z.string().trim().min(1, "Employee ID is required"),
-  nameEn: z.string().trim().min(1, "Name is required"),
+  employeeNo: z.string().trim().min(1, "err.employeeNoReq"),
+  nameEn: z.string().trim().min(1, "err.nameReq"),
   nameKm: opt(z.string().trim()),
   gender: z.enum(["MALE", "FEMALE", "OTHER", ""]).transform((v) => v || null),
   dob: opt(z.string()),
   phone: opt(z.string().trim()),
-  email: z.string().trim().email("Enter a valid email").optional().or(z.literal("")).transform((v) => v || null),
+  email: z.string().trim().email("err.emailInvalid").optional().or(z.literal("")).transform((v) => v || null),
   nationalId: opt(z.string().trim()),
   address: opt(z.string().trim()),
-  departmentId: z.string().min(1, "Department is required"),
-  designationId: z.string().min(1, "Designation is required"),
-  contractTypeId: z.string().min(1, "Contract type is required"),
-  statusId: z.string().min(1, "Status is required"),
+  departmentId: z.string().min(1, "err.deptReq"),
+  designationId: z.string().min(1, "err.desigReq"),
+  contractTypeId: z.string().min(1, "err.contractReq"),
+  statusId: z.string().min(1, "err.statusReq"),
   locationId: opt(z.string()),
   shiftId: opt(z.string()),
-  joiningDate: z.string().min(1, "Joining date is required"),
+  joiningDate: z.string().min(1, "err.joiningReq"),
   contractEnd: opt(z.string()),
-  rateAmount: z.coerce.number({ message: "Rate must be a number" }).min(0, "Rate cannot be negative"),
+  rateAmount: z.coerce.number({ message: "err.rateNum" }).min(0, "err.rateNeg"),
   rateBasis: z.enum(["MONTH", "DAY", "HOUR"]),
   currency: z.string().min(3).max(3),
   zkPin: opt(z.string().trim()),
 })
 
 export async function saveEmployee(id: string | null, _: FormState, form: FormData): Promise<FormState> {
+  const t = await getT()
   const user = await assertRole("HR")
   const raw = Object.fromEntries(form.entries()) as Record<string, string>
   const parsed = schema.safeParse(raw)
   if (!parsed.success) {
     const fields: Record<string, string> = {}
-    for (const i of parsed.error.issues) fields[String(i.path[0])] ??= i.message
-    return { error: "Please fix the highlighted fields.", fields }
+    for (const i of parsed.error.issues) fields[String(i.path[0])] ??= t(i.message)
+    return { error: t("err.fixFields"), fields }
   }
   const d = parsed.data
 
   const ct = await db.contractType.findUnique({ where: { id: d.contractTypeId } })
-  if (ct?.requiresEndDate && !d.contractEnd) return { error: "Please fix the highlighted fields.", fields: { contractEnd: `${ct.name} contracts need an end date` } }
+  if (ct?.requiresEndDate && !d.contractEnd) return { error: t("err.fixFields"), fields: { contractEnd: t("err.needEnd", { v: ct.name }) } }
 
   const dupNo = await db.employee.findFirst({ where: { employeeNo: d.employeeNo, NOT: id ? { id } : undefined } })
-  if (dupNo) return { error: "Please fix the highlighted fields.", fields: { employeeNo: "This employee ID is already used" } }
+  if (dupNo) return { error: t("err.fixFields"), fields: { employeeNo: t("err.dupId") } }
   if (d.zkPin) {
     const dupPin = await db.employee.findFirst({ where: { zkPin: d.zkPin, NOT: id ? { id } : undefined } })
-    if (dupPin) return { error: "Please fix the highlighted fields.", fields: { zkPin: `PIN is already assigned to ${dupPin.nameEn}` } }
+    if (dupPin) return { error: t("err.fixFields"), fields: { zkPin: t("err.dupPin", { v: dupPin.nameEn }) } }
   }
 
   const photo = form.get("photo")
@@ -68,7 +70,7 @@ export async function saveEmployee(id: string | null, _: FormState, form: FormDa
     if (photo instanceof File && photo.size > 0) photoUrl = await savePhoto(photo, d.employeeNo.toLowerCase().replace(/[^a-z0-9]+/g, "-"))
     else if (removeFlag) photoUrl = null
   } catch (e) {
-    return { error: (e as Error).message }
+    return { error: t((e as Error).message) }
   }
 
   const data = {

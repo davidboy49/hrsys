@@ -16,11 +16,11 @@ export class ZkAdapter implements DeviceAdapter {
   constructor(private device: DeviceRow) {}
 
   async testConnection(): Promise<{ ok: boolean; message: string }> {
-    return { ok: false, message: `Pull mode is not enabled in this build (${this.device.ip}:${this.device.port}). Use Mock or Push.` }
+    return { ok: false, message: "dev.pull.disabled" }
   }
 
   async fetchPunches(_since: Date | null): Promise<RawPunch[]> {
     void _since
-    throw new Error("Pull mode is not enabled in this build. Use Mock or Push.")
+    throw new Error("dev.pull.disabled")
   }
 }

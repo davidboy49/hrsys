@@ -8,36 +8,38 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { PasswordForm, SettingsForm, UsersPanel } from "./forms"
+import { getT, titleOf } from "@/i18n/server"
 
-export const metadata = { title: "Settings" }
+export const generateMetadata = titleOf("nav.settings")
 export const dynamic = "force-dynamic"
 
 const TABS = [
-  { id: "company", label: "Company" },
-  { id: "users", label: "Users and roles", admin: true },
-  { id: "attendance", label: "Attendance rules" },
-  { id: "numbering", label: "Numbering" },
-  { id: "templates", label: "Import templates" },
-  { id: "audit", label: "Audit log", admin: true },
-  { id: "account", label: "My account" },
+  { id: "company", label: "set.tab.company" },
+  { id: "users", label: "set.tab.users", admin: true },
+  { id: "attendance", label: "set.tab.attendance" },
+  { id: "numbering", label: "set.tab.numbering" },
+  { id: "templates", label: "set.tab.templates" },
+  { id: "audit", label: "set.tab.audit", admin: true },
+  { id: "account", label: "set.tab.account" },
 ]
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const t = await getT()
   const user = await requireRole("HR")
   const isAdmin = user.role === "ADMIN"
-  const tabs = TABS.filter((t) => !t.admin || isAdmin)
+  const tabs = TABS.filter((x) => !x.admin || isAdmin)
   const sp = await searchParams
-  const tab = tabs.find((t) => t.id === sp.tab)?.id ?? "company"
+  const tab = tabs.find((x) => x.id === sp.tab)?.id ?? "company"
 
   const settings = Object.fromEntries((await db.setting.findMany()).map((s) => [s.key, s.value]))
 
   return (
     <>
-      <PageHeader title="Settings" />
+      <PageHeader title={t("nav.settings")} />
       <nav className="mb-6 flex gap-1 overflow-x-auto border-b">
-        {tabs.map((t) => (
-          <Link key={t.id} href={`/settings?tab=${t.id}`} className={cn("-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm", tab === t.id ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground")}>
-            {t.label}
+        {tabs.map((x) => (
+          <Link key={x.id} href={`/settings?tab=${x.id}`} className={cn("-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm", tab === x.id ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground")}>
+            {t(x.label)}
           </Link>
         ))}
       </nav>
@@ -47,8 +49,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           values={settings}
           disabled={!isAdmin}
           fields={[
-            { key: "company.name", label: "Company name" },
-            { key: "company.currency", label: "Default currency", type: "currency", hint: "Pre-selected when adding an employee." },
+            { key: "company.name", label: t("set.companyName"), hint: t("set.companyNameHint") },
+            { key: "company.currency", label: t("set.currency"), type: "currency", hint: t("set.currencyHint") },
           ]}
         />
       )}
@@ -60,7 +62,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             id: e.id, label: `${e.employeeNo} · ${e.nameEn}`, name: e.nameEn, email: e.email ?? "",
           }))}
           users={(await db.user.findMany({ orderBy: { createdAt: "asc" }, include: { employee: { select: { employeeNo: true, nameEn: true } } } })).map((u) => ({
-            id: u.id, name: u.name, email: u.email, role: u.role, isActive: u.isActive, lastLogin: u.lastLoginAt ? fmtDateTime(u.lastLoginAt) : "Never",
+            id: u.id, name: u.name, email: u.email, role: u.role, isActive: u.isActive, lastLogin: u.lastLoginAt ? fmtDateTime(u.lastLoginAt) : t("att.never"),
             employeeId: u.employeeId, employeeLabel: u.employee ? `${u.employee.employeeNo} · ${u.employee.nameEn}` : null,
           }))}
         />
@@ -70,7 +72,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <SettingsForm
           values={settings}
           disabled={!isAdmin}
-          fields={[{ key: "attendance.lateGraceMin", label: "Default late grace (minutes)", type: "number", hint: "Each shift also has its own grace period in Masterdata, which takes priority." }]}
+          fields={[
+            { key: "attendance.lateGraceMin", label: t("set.lateGrace"), type: "number", hint: t("set.lateGraceHint") },
+            { key: "log.lateAfterMin", label: t("set.logLate"), type: "number", hint: t("set.logLateHint") },
+            { key: "log.earlyBeforeMin", label: t("set.logEarly"), type: "number", hint: t("set.logEarlyHint") },
+          ]}
         />
       )}
 
@@ -78,16 +84,16 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <SettingsForm
           values={settings}
           disabled={!isAdmin}
-          fields={[{ key: "employee.prefix", label: "Employee ID prefix", hint: "New employees are numbered PREFIX0001, PREFIX0002 and so on. Example: EMP-0042." }]}
+          fields={[{ key: "employee.prefix", label: t("set.prefix"), hint: t("set.prefixHint") }]}
         />
       )}
 
       {tab === "templates" && (
         <div className="max-w-xl space-y-3">
-          <p className="text-sm text-muted-foreground">Download the Excel template for bulk employee import. It lists the column rules on its second sheet.</p>
+          <p className="text-sm text-muted-foreground">{t("set.templateDesc")}</p>
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <Button variant="outline" render={<a href="/employees/template" />}>
-            <Download /> Employee import template
+            <Download /> {t("set.templateBtn")}
           </Button>
         </div>
       )}
@@ -96,7 +102,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       {tab === "account" && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Signed in as <b className="text-foreground">{user.email}</b> ({user.role}).
+            {t("set.signedInAs")} <b className="text-foreground">{user.email}</b> ({t(`role.${user.role}`)}).
           </p>
           <PasswordForm />
         </div>
@@ -106,23 +112,24 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 }
 
 async function Audit() {
+  const t = await getT()
   const logs = await db.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { user: true } })
   return (
     <div className="rounded-lg border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>When</TableHead>
-            <TableHead>User</TableHead>
-            <TableHead>Action</TableHead>
-            <TableHead>Detail</TableHead>
+            <TableHead>{t("set.audit.when")}</TableHead>
+            <TableHead>{t("set.audit.user")}</TableHead>
+            <TableHead>{t("set.audit.action")}</TableHead>
+            <TableHead>{t("set.audit.detail")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {logs.map((l) => (
             <TableRow key={l.id}>
               <TableCell className="whitespace-nowrap tabular-nums">{fmtDateTime(l.createdAt)}</TableCell>
-              <TableCell>{l.user?.email ?? "system"}</TableCell>
+              <TableCell>{l.user?.email ?? t("set.audit.system")}</TableCell>
               <TableCell>
                 {l.action} <span className="text-muted-foreground">{l.entity}</span>
               </TableCell>

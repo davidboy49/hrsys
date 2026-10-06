@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { NativeSelect } from "@/components/native-select"
 import { changeOwnPassword, createUser, saveSettings, updateUser } from "./actions"
+import { useT } from "@/i18n/provider"
 
 export function SettingsForm({ values, fields, disabled }: { values: Record<string, string>; fields: { key: string; label: string; hint?: string; type?: string }[]; disabled: boolean }) {
+  const t = useT()
   const [pending, start] = useTransition()
   const [err, setErr] = useState<string | null>(null)
   return (
@@ -23,7 +25,7 @@ export function SettingsForm({ values, fields, disabled }: { values: Record<stri
           if (r.error) setErr(r.error)
           else {
             setErr(null)
-            toast.success("Settings saved")
+            toast.success(t("set.saved"))
           }
         })
       }
@@ -45,7 +47,7 @@ export function SettingsForm({ values, fields, disabled }: { values: Record<stri
       {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
       {!disabled && (
         <Button type="submit" disabled={pending}>
-          Save
+          {t("common.save")}
         </Button>
       )}
     </form>
@@ -57,6 +59,7 @@ type Emp = { id: string; label: string; name: string; email: string }
 type RoleKey = "ADMIN" | "HR" | "MANAGER" | "EMPLOYEE"
 
 export function UsersPanel({ users, meId, employees }: { users: U[]; meId: string; employees: Emp[] }) {
+  const t = useT()
   const linked = new Set(users.map((u) => u.employeeId).filter(Boolean))
   const [open, setOpen] = useState(false)
   const [reset, setReset] = useState<U | null>(null)
@@ -75,18 +78,18 @@ export function UsersPanel({ users, meId, employees }: { users: U[]; meId: strin
       <div className="flex justify-between">
         <p className="text-sm text-muted-foreground">Admin: everything. HR: employees, rate, masterdata, attendance. Manager: read only, no rate. Employee: phone check-in by QR only (link a login to an employee record).</p>
         <Button onClick={() => { setErr(null); setOpen(true) }}>
-          <Plus /> Add user
+          <Plus /> {t("users.add")}
         </Button>
       </div>
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Employee</TableHead>
-              <TableHead>Last login</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t("users.user")}</TableHead>
+              <TableHead>{t("users.role")}</TableHead>
+              <TableHead>{t("emp.employee")}</TableHead>
+              <TableHead>{t("users.lastLogin")}</TableHead>
+              <TableHead>{t("emp.status")}</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -101,14 +104,14 @@ export function UsersPanel({ users, meId, employees }: { users: U[]; meId: strin
                   <NativeSelect
                     value={u.role}
                     disabled={u.id === meId || pending}
-                    onChange={(e) => run(() => updateUser(u.id, { role: e.target.value as RoleKey }), "Role updated")}
+                    onChange={(e) => run(() => updateUser(u.id, { role: e.target.value as RoleKey }), t("users.roleUpdated"))}
                     className="h-7 w-28"
-                    aria-label={`Role for ${u.name}`}
+                    aria-label={t("users.roleFor", { name: u.name })}
                   >
-                    <option value="ADMIN">Admin</option>
-                    <option value="HR">HR</option>
-                    <option value="MANAGER">Manager</option>
-                    <option value="EMPLOYEE">Employee</option>
+                    <option value="ADMIN">{t("role.ADMIN")}</option>
+                    <option value="HR">{t("role.HR")}</option>
+                    <option value="MANAGER">{t("role.MANAGER")}</option>
+                    <option value="EMPLOYEE">{t("role.EMPLOYEE")}</option>
                   </NativeSelect>
                 </TableCell>
                 <TableCell className="text-muted-foreground">{u.employeeLabel ?? "—"}</TableCell>
@@ -116,19 +119,19 @@ export function UsersPanel({ users, meId, employees }: { users: U[]; meId: strin
                 <TableCell>
                   <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${u.isActive ? "bg-green-500/15 text-green-700 dark:text-green-300" : "bg-muted text-muted-foreground"}`}>
                     <span className="size-1.5 rounded-full bg-current" />
-                    {u.isActive ? "Active" : "Disabled"}
+                    {u.isActive ? t("users.active") : t("users.disabled")}
                   </span>
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-right">
                   <Button size="sm" variant="ghost" onClick={() => { setErr(null); setEditing(u) }}>
-                    Edit
+                    {t("common.edit")}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => { setErr(null); setReset(u) }}>
-                    Reset password
+                    {t("users.resetPw")}
                   </Button>
                   {u.id !== meId && (
-                    <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => updateUser(u.id, { isActive: !u.isActive }), u.isActive ? "User disabled" : "User enabled")}>
-                      {u.isActive ? "Disable" : "Enable"}
+                    <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => updateUser(u.id, { isActive: !u.isActive }), u.isActive ? t("users.disabledToast") : t("users.enabledToast"))}>
+                      {u.isActive ? t("users.disable") : t("users.enable")}
                     </Button>
                   )}
                 </TableCell>
@@ -141,7 +144,7 @@ export function UsersPanel({ users, meId, employees }: { users: U[]; meId: strin
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add user</DialogTitle>
+            <DialogTitle>{t("users.add")}</DialogTitle>
           </DialogHeader>
           <form
             className="space-y-3"
@@ -151,13 +154,13 @@ export function UsersPanel({ users, meId, employees }: { users: U[]; meId: strin
                 if (r.error) setErr(r.error)
                 else {
                   setOpen(false)
-                  toast.success("User created")
+                  toast.success(t("users.created"))
                 }
               })
             }
           >
             <div className="space-y-1.5">
-              <Label htmlFor="u-emp">Link to employee (optional)</Label>
+              <Label htmlFor="u-emp">{t("users.linkOpt")}</Label>
               <NativeSelect
                 id="u-emp"
                 name="employeeId"
@@ -173,28 +176,28 @@ export function UsersPanel({ users, meId, employees }: { users: U[]; meId: strin
                   if (r && r.value === "HR") r.value = "EMPLOYEE"
                 }}
               >
-                <option value="">Not linked</option>
+                <option value="">{t("users.notLinked")}</option>
                 {employees.filter((x) => !linked.has(x.id)).map((x) => (
                   <option key={x.id} value={x.id}>{x.label}</option>
                 ))}
               </NativeSelect>
             </div>
-            <div className="space-y-1.5"><Label htmlFor="u-name">Name</Label><Input id="u-name" name="name" required /></div>
-            <div className="space-y-1.5"><Label htmlFor="u-email">Email</Label><Input id="u-email" name="email" type="email" required /></div>
+            <div className="space-y-1.5"><Label htmlFor="u-name">{t("common.name")}</Label><Input id="u-name" name="name" required /></div>
+            <div className="space-y-1.5"><Label htmlFor="u-email">{t("login.email")}</Label><Input id="u-email" name="email" type="email" required /></div>
             <div className="space-y-1.5">
-              <Label htmlFor="u-role">Role</Label>
+              <Label htmlFor="u-role">{t("users.role")}</Label>
               <NativeSelect id="u-role" name="role" defaultValue="HR">
-                <option value="ADMIN">Admin</option>
-                <option value="HR">HR</option>
-                <option value="MANAGER">Manager</option>
-                <option value="EMPLOYEE">Employee (QR check-in only)</option>
+                <option value="ADMIN">{t("role.ADMIN")}</option>
+                <option value="HR">{t("role.HR")}</option>
+                <option value="MANAGER">{t("role.MANAGER")}</option>
+                <option value="EMPLOYEE">{t("role.EMPLOYEE.long")}</option>
               </NativeSelect>
             </div>
-            <div className="space-y-1.5"><Label htmlFor="u-pw">Password</Label><Input id="u-pw" name="password" type="text" minLength={8} required /></div>
+            <div className="space-y-1.5"><Label htmlFor="u-pw">{t("login.password")}</Label><Input id="u-pw" name="password" type="text" minLength={10} required /></div>
             {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={pending}>Create user</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("common.cancel")}</Button>
+              <Button type="submit" disabled={pending}>{t("users.create")}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -203,7 +206,7 @@ export function UsersPanel({ users, meId, employees }: { users: U[]; meId: strin
       <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit user</DialogTitle>
+            <DialogTitle>{t("users.edit")}</DialogTitle>
           </DialogHeader>
           <form
             key={editing?.id}
@@ -214,27 +217,27 @@ export function UsersPanel({ users, meId, employees }: { users: U[]; meId: strin
                 if (r.error) setErr(r.error)
                 else {
                   setEditing(null)
-                  toast.success("User updated")
+                  toast.success(t("users.updated"))
                 }
               })
             }
           >
-            <div className="space-y-1.5"><Label htmlFor="e-name">Name</Label><Input id="e-name" name="name" defaultValue={editing?.name} required /></div>
-            <div className="space-y-1.5"><Label htmlFor="e-email">Email (used to sign in)</Label><Input id="e-email" name="email" type="email" defaultValue={editing?.email} required /></div>
+            <div className="space-y-1.5"><Label htmlFor="e-name">{t("common.name")}</Label><Input id="e-name" name="name" defaultValue={editing?.name} required /></div>
+            <div className="space-y-1.5"><Label htmlFor="e-email">{t("users.emailSignIn")}</Label><Input id="e-email" name="email" type="email" defaultValue={editing?.email} required /></div>
             <div className="space-y-1.5">
-              <Label htmlFor="e-emp">Linked employee</Label>
+              <Label htmlFor="e-emp">{t("users.linked")}</Label>
               <NativeSelect id="e-emp" name="employeeId" defaultValue={editing?.employeeId ?? ""}>
-                <option value="">Not linked</option>
+                <option value="">{t("users.notLinked")}</option>
                 {employees.filter((x) => !linked.has(x.id) || x.id === editing?.employeeId).map((x) => (
                   <option key={x.id} value={x.id}>{x.label}</option>
                 ))}
               </NativeSelect>
             </div>
-            <p className="text-xs text-muted-foreground">Change the role in the table. Use Reset password to set a new password.</p>
+            <p className="text-xs text-muted-foreground">{t("users.editNote")}</p>
             {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-              <Button type="submit" disabled={pending}>Save</Button>
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>{t("common.cancel")}</Button>
+              <Button type="submit" disabled={pending}>{t("common.save")}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -243,7 +246,7 @@ export function UsersPanel({ users, meId, employees }: { users: U[]; meId: strin
       <Dialog open={reset !== null} onOpenChange={(o) => !o && setReset(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reset password for {reset?.name}</DialogTitle>
+            <DialogTitle>{t("users.resetFor", { name: reset?.name ?? "" })}</DialogTitle>
           </DialogHeader>
           <form
             className="space-y-3"
@@ -253,16 +256,16 @@ export function UsersPanel({ users, meId, employees }: { users: U[]; meId: strin
                 if (r.error) setErr(r.error)
                 else {
                   setReset(null)
-                  toast.success("Password reset")
+                  toast.success(t("users.pwReset"))
                 }
               })
             }
           >
-            <div className="space-y-1.5"><Label htmlFor="r-pw">New password</Label><Input id="r-pw" name="password" type="text" minLength={8} required /></div>
+            <div className="space-y-1.5"><Label htmlFor="r-pw">{t("users.newPw")}</Label><Input id="r-pw" name="password" type="text" minLength={10} required /></div>
             {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setReset(null)}>Cancel</Button>
-              <Button type="submit" disabled={pending}>Reset</Button>
+              <Button type="button" variant="outline" onClick={() => setReset(null)}>{t("common.cancel")}</Button>
+              <Button type="submit" disabled={pending}>{t("users.reset")}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -272,6 +275,7 @@ export function UsersPanel({ users, meId, employees }: { users: U[]; meId: strin
 }
 
 export function PasswordForm() {
+  const t = useT()
   const [pending, start] = useTransition()
   const [err, setErr] = useState<string | null>(null)
   return (
@@ -283,15 +287,15 @@ export function PasswordForm() {
           if (r.error) setErr(r.error)
           else {
             setErr(null)
-            toast.success("Password changed")
+            toast.success(t("users.pwChanged"))
           }
         })
       }
     >
-      <div className="space-y-1.5"><Label htmlFor="p-cur">Current password</Label><Input id="p-cur" name="current" type="password" autoComplete="current-password" required /></div>
-      <div className="space-y-1.5"><Label htmlFor="p-new">New password</Label><Input id="p-new" name="next" type="password" autoComplete="new-password" minLength={8} required /></div>
+      <div className="space-y-1.5"><Label htmlFor="p-cur">{t("users.curPw")}</Label><Input id="p-cur" name="current" type="password" autoComplete="current-password" required /></div>
+      <div className="space-y-1.5"><Label htmlFor="p-new">{t("users.newPw")}</Label><Input id="p-new" name="next" type="password" autoComplete="new-password" minLength={10} required /></div>
       {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
-      <Button type="submit" disabled={pending}>Change password</Button>
+      <Button type="submit" disabled={pending}>{t("users.changePw")}</Button>
     </form>
   )
 }

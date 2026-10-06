@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MultiSelect, type Option } from "@/components/multi-select"
 import { useQueryParams } from "@/lib/use-query-params"
+import { useT } from "@/i18n/provider"
 import { ImportDialog } from "./import-dialog"
 
 type Opts = { departments: Option[]; designations: Option[]; contractTypes: Option[]; statuses: Option[] }
@@ -18,6 +19,7 @@ const KEYS = ["dept", "desig", "contract", "status", "joinFrom", "joinTo", "rate
 const csv = (s: string | null) => (s ? s.split(",").filter(Boolean) : [])
 
 export function Toolbar({ opts, canEdit, canExport }: { opts: Opts; canEdit: boolean; canExport: boolean }) {
+  const t = useT()
   const { sp, set } = useQueryParams()
   const [q, setQ] = useState(sp.get("q") ?? "")
   const [open, setOpen] = useState(false)
@@ -65,14 +67,14 @@ export function Toolbar({ opts, canEdit, canExport }: { opts: Opts; canEdit: boo
   const addList = (k: "dept" | "desig" | "contract" | "status", name: string, o: Option[]) => {
     if (applied[k].length) chips.push({ k, text: `${name}: ${applied[k].map((id) => label(o, id)).join(", ")}`, clear: () => set({ [k]: null }) })
   }
-  addList("dept", "Department", opts.departments)
-  addList("desig", "Designation", opts.designations)
-  addList("contract", "Contract", opts.contractTypes)
-  addList("status", "Status", opts.statuses)
+  addList("dept", t("emp.department"), opts.departments)
+  addList("desig", t("emp.designation"), opts.designations)
+  addList("contract", t("emp.contract"), opts.contractTypes)
+  addList("status", t("emp.status"), opts.statuses)
   if (applied.joinFrom || applied.joinTo)
-    chips.push({ k: "join", text: `Joined: ${applied.joinFrom || "…"} – ${applied.joinTo || "…"}`, clear: () => set({ joinFrom: null, joinTo: null }) })
+    chips.push({ k: "join", text: `${t("emp.chip.joined")}: ${applied.joinFrom || "…"} – ${applied.joinTo || "…"}`, clear: () => set({ joinFrom: null, joinTo: null }) })
   if (applied.rateMin || applied.rateMax)
-    chips.push({ k: "rate", text: `Rate: ${applied.rateMin || "0"} – ${applied.rateMax || "∞"}`, clear: () => set({ rateMin: null, rateMax: null }) })
+    chips.push({ k: "rate", text: `${t("emp.rate")}: ${applied.rateMin || "0"} – ${applied.rateMax || "∞"}`, clear: () => set({ rateMin: null, rateMax: null }) })
 
   function apply() {
     set({
@@ -97,7 +99,7 @@ export function Toolbar({ opts, canEdit, canExport }: { opts: Opts; canEdit: boo
     } catch {}
   }
   function saveView() {
-    const name = window.prompt("Name this view")
+    const name = window.prompt(t("views.namePrompt"))
     if (!name) return
     persist([...views.filter((v) => v.name !== name), { name, qs: sp.toString() }])
   }
@@ -114,22 +116,22 @@ export function Toolbar({ opts, canEdit, canExport }: { opts: Opts; canEdit: boo
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-52 flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, ID, phone or email" className="pl-8" aria-label="Search employees" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("emp.searchPh")} className="pl-8" aria-label={t("emp.searchAria")} />
         </div>
         <Button variant={count ? "secondary" : "outline"} onClick={() => {
             setDraft(applied)
             setOpen((o) => !o)
           }} aria-expanded={open}>
-          <Filter /> Advanced filter
+          <Filter /> {t("filter.advanced")}
           {count > 0 && <span className="ml-0.5 rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">{count}</span>}
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="outline" />}>
-            <Bookmark /> Views
+            <Bookmark /> {t("views.title")}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Saved views</DropdownMenuLabel>
-            {views.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">None yet. Set filters, then save.</p>}
+            <DropdownMenuLabel>{t("views.saved")}</DropdownMenuLabel>
+            {views.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">{t("views.none")}</p>}
             {views.map((v) => (
               <DropdownMenuItem
                 key={v.name}
@@ -140,7 +142,7 @@ export function Toolbar({ opts, canEdit, canExport }: { opts: Opts; canEdit: boo
                 <span className="flex-1 truncate">{v.name}</span>
                 <span
                   role="button"
-                  aria-label={`Delete view ${v.name}`}
+                  aria-label={t("views.delete", { name: v.name })}
                   onClick={(e) => {
                     e.stopPropagation()
                     persist(views.filter((x) => x.name !== v.name))
@@ -152,29 +154,29 @@ export function Toolbar({ opts, canEdit, canExport }: { opts: Opts; canEdit: boo
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={saveView}>Save current filters as view…</DropdownMenuItem>
+            <DropdownMenuItem onClick={saveView}>{t("views.save")}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         {canEdit && (
           <Button variant="outline" onClick={() => setImportOpen(true)}>
-            <Upload /> Import
+            <Upload /> {t("common.import")}
           </Button>
         )}
         {canExport && (
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" />}>
-              <Download /> Export
+              <Download /> {t("common.export")}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Current filtered result</DropdownMenuLabel>
-              <DropdownMenuItem render={<a href={exportHref("xlsx")} />}>Excel (.xlsx)</DropdownMenuItem>
-              <DropdownMenuItem render={<a href={exportHref("csv")} />}>CSV (.csv)</DropdownMenuItem>
+              <DropdownMenuLabel>{t("export.current")}</DropdownMenuLabel>
+              <DropdownMenuItem render={<a href={exportHref("xlsx")} />}>{t("export.xlsx")}</DropdownMenuItem>
+              <DropdownMenuItem render={<a href={exportHref("csv")} />}>{t("export.csv")}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
         {canEdit && (
           <Button render={<Link href="/employees/new" />}>
-            <Plus /> Add employee
+            <Plus /> {t("emp.add")}
           </Button>
         )}
       </div>
@@ -183,37 +185,37 @@ export function Toolbar({ opts, canEdit, canExport }: { opts: Opts; canEdit: boo
         <div className="rounded-lg border bg-muted/40 p-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1.5">
-              <Label>Department</Label>
+              <Label>{t("emp.department")}</Label>
               <MultiSelect options={opts.departments} value={draft.dept} onChange={(v) => setDraft({ ...draft, dept: v })} />
             </div>
             <div className="space-y-1.5">
-              <Label>Designation</Label>
+              <Label>{t("emp.designation")}</Label>
               <MultiSelect options={opts.designations} value={draft.desig} onChange={(v) => setDraft({ ...draft, desig: v })} />
             </div>
             <div className="space-y-1.5">
-              <Label>Contract</Label>
+              <Label>{t("emp.contract")}</Label>
               <MultiSelect options={opts.contractTypes} value={draft.contract} onChange={(v) => setDraft({ ...draft, contract: v })} />
             </div>
             <div className="space-y-1.5">
-              <Label>Status</Label>
+              <Label>{t("emp.status")}</Label>
               <MultiSelect options={opts.statuses} value={draft.status} onChange={(v) => setDraft({ ...draft, status: v })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="jf">Joined from</Label>
+              <Label htmlFor="jf">{t("filter.joinedFrom")}</Label>
               <Input id="jf" type="date" value={draft.joinFrom} onChange={(e) => setDraft({ ...draft, joinFrom: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="jt">Joined to</Label>
+              <Label htmlFor="jt">{t("filter.joinedTo")}</Label>
               <Input id="jt" type="date" value={draft.joinTo} onChange={(e) => setDraft({ ...draft, joinTo: e.target.value })} />
             </div>
             {canEdit && (
               <>
                 <div className="space-y-1.5">
-                  <Label htmlFor="rmin">Rate min</Label>
+                  <Label htmlFor="rmin">{t("filter.rateMin")}</Label>
                   <Input id="rmin" type="number" min="0" value={draft.rateMin} onChange={(e) => setDraft({ ...draft, rateMin: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="rmax">Rate max</Label>
+                  <Label htmlFor="rmax">{t("filter.rateMax")}</Label>
                   <Input id="rmax" type="number" min="0" value={draft.rateMax} onChange={(e) => setDraft({ ...draft, rateMax: e.target.value })} />
                 </div>
               </>
@@ -221,9 +223,9 @@ export function Toolbar({ opts, canEdit, canExport }: { opts: Opts; canEdit: boo
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="ghost" onClick={clearAll}>
-              Clear all
+              {t("filter.clearAll")}
             </Button>
-            <Button onClick={apply}>Apply filters</Button>
+            <Button onClick={apply}>{t("filter.apply")}</Button>
           </div>
         </div>
       )}
@@ -236,7 +238,7 @@ export function Toolbar({ opts, canEdit, canExport }: { opts: Opts; canEdit: boo
             </button>
           ))}
           <button onClick={clearAll} className="px-1 text-xs text-muted-foreground hover:text-foreground">
-            Clear all
+            {t("filter.clearAll")}
           </button>
         </div>
       )}

@@ -6,22 +6,24 @@ export const TZ_OFFSET_H = 7
 
 type D = Date | string | null | undefined
 
-// @db.Date values are UTC midnight, so format them in UTC to avoid off-by-one days.
-const dateFmt = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })
+// Numeric dd/mm/yyyy reads the same in Khmer and English, and matches local convention.
+// @db.Date values are UTC midnight, so those are formatted in UTC to avoid off-by-one days.
+const dateFmt = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" })
 const timeFmt = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: APP_TZ })
-const dtFmt = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: APP_TZ })
+const dtFmt = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: APP_TZ })
 
-export const fmtDate = (d: D) => (d ? dateFmt.format(new Date(d)).replace("Sept", "Sep") : "—")
+export const fmtDate = (d: D) => (d ? dateFmt.format(new Date(d)) : "—")
 export const fmtTime = (d: D) => (d ? timeFmt.format(new Date(d)) : "—")
 export const fmtDateTime = (d: D) => (d ? dtFmt.format(new Date(d)).replace(",", "") : "—")
 
-export const BASIS_LABEL: Record<RateBasis, string> = { MONTH: "mo", DAY: "day", HOUR: "hr" }
+/** Translation keys for the unit shown after a rate, e.g. "$450 / mo". */
+export const BASIS_KEY: Record<RateBasis, string> = { MONTH: "basis.short.MONTH", DAY: "basis.short.DAY", HOUR: "basis.short.HOUR" }
 
-export function fmtRate(amount: unknown, basis: RateBasis, currency: string) {
+export function fmtRate(amount: unknown, basis: RateBasis, currency: string, unit?: string) {
   const n = Number(amount)
   const sym = currency === "USD" ? "$" : currency === "KHR" ? "៛" : currency + " "
   const val = n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-  return `${sym}${val} / ${BASIS_LABEL[basis]}`
+  return `${sym}${val} / ${unit ?? basis.toLowerCase()}`
 }
 
 export const initials = (name: string) =>
