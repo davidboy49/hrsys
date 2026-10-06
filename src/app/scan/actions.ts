@@ -3,13 +3,16 @@
 import { revalidatePath } from "next/cache"
 import { db } from "@/lib/db"
 import { getSession } from "@/lib/session"
-import { distanceM, verifyToken } from "@/lib/qr"
+import { distanceM } from "@/lib/qr"
 import { rebuildDaily } from "@/lib/attendance"
 import { localDateKey } from "@/lib/format"
 import { audit } from "@/lib/audit"
-import { qrDeviceFor } from "@/lib/qr-attendance"
+import { QR_REASON_KEY, qrDeviceFor, resolveQr } from "@/lib/qr-attendance"
 import { rateLimit } from "@/lib/rate-limit"
 import { getT } from "@/i18n/server"
+
+/** A phone reporting a position less precise than this cannot prove it is at the site. */
+const MAX_ACCURACY_M = 100
 
 export type PunchResult = { ok: true; type: "IN" | "OUT"; at: string; location: string } | { ok: false; error: string }
 
@@ -21,23 +24,24 @@ export async function punchByQr(token: string, type: "IN" | "OUT", geo: { lat: n
   if (!(await rateLimit(`punch:${user.id}`, 10, 60)).ok) return { ok: false, error: t("scan.err.rate") }
   if (type !== "IN" && type !== "OUT") return { ok: false, error: t("scan.err.type") }
 
-  const v = verifyToken(token)
-  if (!v.ok) return { ok: false, error: v.reason === "expired" ? t("scan.err.expired") : t("scan.err.invalidShort") }
+  const r = await resolveQr(token)
+  if (!r.ok) return { ok: false, error: t(QR_REASON_KEY[r.reason]) }
+  const loc = r.loc
 
-  const [me, loc] = await Promise.all([
-    db.user.findUnique({ where: { id: user.id }, include: { employee: true } }),
-    db.location.findUnique({ where: { id: v.locationId } }),
-  ])
+  const me = await db.user.findUnique({ where: { id: user.id }, include: { employee: true } })
   if (!me?.isActive) return { ok: false, error: t("scan.err.disabled") }
   if (!me.employee || me.employee.deletedAt) return { ok: false, error: t("scan.err.notLinked") }
-  if (!loc || !loc.isActive) return { ok: false, error: t("scan.err.locInactive") }
 
-  // optional geofence: only when the location has coordinates
-  if (loc.latitude != null && loc.longitude != null) {
+  // Location check. A printed (permanent) code relies on it completely, so it is mandatory there.
+  const hasCoords = loc.latitude != null && loc.longitude != null
+  let distance: number | null = null
+  if (r.kind === "static" && !hasCoords) return { ok: false, error: t("scan.err.noCoords", { name: loc.name }) }
+  if (hasCoords) {
     if (!geo) return { ok: false, error: t("scan.err.geoRequired") }
-    const d = distanceM(geo.lat, geo.lng, loc.latitude, loc.longitude)
+    if (r.kind === "static" && geo.accuracy > MAX_ACCURACY_M) return { ok: false, error: t("scan.err.accuracy", { m: Math.round(geo.accuracy) }) }
+    distance = distanceM(geo.lat, geo.lng, loc.latitude!, loc.longitude!)
     const allowed = loc.radiusM + Math.min(Math.max(geo.accuracy, 0), 50)
-    if (d > allowed) return { ok: false, error: t("scan.err.far", { m: Math.round(d), name: loc.name }) }
+    if (distance > allowed) return { ok: false, error: t("scan.err.far", { m: Math.round(distance), name: loc.name }) }
   }
 
   const emp = me.employee
@@ -47,7 +51,19 @@ export async function punchByQr(token: string, type: "IN" | "OUT", geo: { lat: n
   const device = await qrDeviceFor(loc.id, loc.name)
   const now = new Date(Math.floor(Date.now() / 1000) * 1000)
   const pin = emp.zkPin ?? `QR-${emp.employeeNo}`
-  await db.attendancePunch.create({ data: { deviceId: device.id, pin, punchedAt: now, type, employeeId: emp.id } })
+  await db.attendancePunch.create({
+    data: {
+      deviceId: device.id,
+      pin,
+      punchedAt: now,
+      type,
+      employeeId: emp.id,
+      lat: geo?.lat ?? null,
+      lng: geo?.lng ?? null,
+      accuracyM: geo ? Math.round(geo.accuracy) : null,
+      distanceM: distance === null ? null : Math.round(distance),
+    },
+  })
   await db.device.update({ where: { id: device.id }, data: { lastSyncAt: now, status: "ONLINE" } })
   await rebuildDaily(emp.id, localDateKey(now))
   await audit(user.id, "qr-punch", "AttendancePunch", undefined, `${type} at ${loc.name}`)

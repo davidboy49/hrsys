@@ -19,6 +19,37 @@ export function makeToken(locationId: string, now = Date.now()) {
   return `${payload}.${sig(payload)}`
 }
 
+/**
+ * Printed code: it never expires, so it carries no time. It is tied to the location and to a version number
+ * kept on the location. Pressing "Regenerate" raises the version, which makes every older printout stop working.
+ */
+export function makeStaticToken(locationId: string, version: number) {
+  const payload = `s.${locationId}.${version}`
+  return `${payload}.${sig(payload)}`
+}
+
+export type TokenCheck =
+  | { ok: true; kind: "rotating"; locationId: string }
+  | { ok: true; kind: "static"; locationId: string; version: number }
+  | { ok: false; reason: "invalid" | "expired" }
+
+/** Handles both kinds. For a static token the caller still has to compare `version` with the location's current one. */
+export function checkToken(token: string, now = Date.now()): TokenCheck {
+  if (token.startsWith("s.")) {
+    const parts = token.split(".")
+    if (parts.length !== 4) return { ok: false, reason: "invalid" }
+    const [, locationId, v, given] = parts
+    const version = Number(v)
+    const expect = sig(`s.${locationId}.${version}`)
+    const a = Buffer.from(given)
+    const b = Buffer.from(expect)
+    if (!locationId || !Number.isInteger(version) || a.length !== b.length || !timingSafeEqual(a, b)) return { ok: false, reason: "invalid" }
+    return { ok: true, kind: "static", locationId, version }
+  }
+  const r = verifyToken(token, now)
+  return r.ok ? { ok: true, kind: "rotating", locationId: r.locationId } : r
+}
+
 export function verifyToken(token: string, now = Date.now()): { ok: true; locationId: string } | { ok: false; reason: "invalid" | "expired" } {
   const i = token.lastIndexOf(".")
   const j = token.lastIndexOf(".", i - 1)

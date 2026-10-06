@@ -3,8 +3,7 @@ import { redirect } from "next/navigation"
 import { QrCode, Users } from "lucide-react"
 import { db } from "@/lib/db"
 import { atLeast, getSession } from "@/lib/session"
-import { verifyToken } from "@/lib/qr"
-import { suggestedType } from "@/lib/qr-attendance"
+import { QR_REASON_KEY, resolveQr, suggestedType } from "@/lib/qr-attendance"
 import { fmtDateTime } from "@/lib/format"
 import { logout } from "@/app/login/actions"
 import { Button } from "@/components/ui/button"
@@ -24,8 +23,8 @@ export default async function ScanPage({ searchParams }: { searchParams: Promise
 
   const me = await db.user.findUnique({ where: { id: user.id }, include: { employee: true } })
   const emp = me?.employee && !me.employee.deletedAt ? me.employee : null
-  const check = token ? verifyToken(token) : null
-  const loc = check?.ok ? await db.location.findUnique({ where: { id: check.locationId } }) : null
+  const check = token ? await resolveQr(token) : null
+  const loc = check?.ok ? check.loc : null
 
   const [recent, suggested] = emp
     ? await Promise.all([
@@ -69,10 +68,10 @@ export default async function ScanPage({ searchParams }: { searchParams: Promise
           {t("scan.notLinked")}
         </p>
       ) : token && check?.ok && loc ? (
-        <ScanClient token={token} suggested={suggested} location={loc.name} needsGeo={loc.latitude != null} />
+        <ScanClient token={token} suggested={suggested} location={loc.name} needsGeo={loc.qrMode === "STATIC" || loc.latitude != null} />
       ) : token ? (
         <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-          {check && !check.ok && check.reason === "expired" ? t("scan.err.expired") : t("scan.err.invalid")}
+          {check && !check.ok ? t(QR_REASON_KEY[check.reason]) : null}
         </p>
       ) : (
         <div className="flex items-start gap-3 rounded-lg border p-4 text-sm">

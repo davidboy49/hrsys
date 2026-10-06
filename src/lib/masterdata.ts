@@ -26,6 +26,10 @@ const BASIS = [
   { value: "DAY", label: "basis.DAY" },
   { value: "HOUR", label: "basis.HOUR" },
 ]
+const QR_MODES = [
+  { value: "STATIC", label: "qrmode.STATIC" },
+  { value: "ROTATING", label: "qrmode.ROTATING" },
+]
 const COLORS = ["green", "amber", "blue", "red", "gray"].map((c) => ({ value: c, label: `color.${c}` }))
 
 export const ENTITIES: EntityDef[] = [
@@ -72,6 +76,7 @@ export const ENTITIES: EntityDef[] = [
       { name: "latitude", label: "mdf.latitude", type: "decimal" },
       { name: "longitude", label: "mdf.longitude", type: "decimal" },
       { name: "radiusM", label: "mdf.radiusM", type: "number", required: true },
+      { name: "qrMode", label: "mdf.qrMode", type: "select", options: QR_MODES, required: true, column: true },
     ],
   },
   {

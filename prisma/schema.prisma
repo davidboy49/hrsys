@@ -26,6 +26,11 @@ enum Gender {
   OTHER
 }
 
+enum QrMode {
+  ROTATING
+  STATIC
+}
+
 enum DeviceMode {
   MOCK
   PULL
@@ -117,6 +122,8 @@ model Location {
   latitude  Float?
   longitude Float?
   radiusM   Int        @default(150)
+  qrMode    QrMode     @default(STATIC)
+  qrVersion Int        @default(1)
   isActive  Boolean    @default(true)
   devices   Device[]
   employees Employee[]
@@ -222,6 +229,10 @@ model AttendancePunch {
   pin        String
   punchedAt  DateTime
   type       PunchType @default(IN)
+  lat        Float?
+  lng        Float?
+  accuracyM  Int?
+  distanceM  Int?
   employeeId String?
   employee   Employee? @relation(fields: [employeeId], references: [id])
 

@@ -202,6 +202,7 @@ async function Punches({ sp, canExport }: { sp: SP; canExport: boolean }) {
               <TableHead className="font-mono text-[11px] uppercase tracking-wide">{t("emp.employee")}</TableHead>
               <TableHead className="font-mono text-[11px] uppercase tracking-wide">{t("emp.department")}</TableHead>
               <TableHead className="font-mono text-[11px] uppercase tracking-wide">{t("att.device")}</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">{t("att.distance")}</TableHead>
               <TableHead className="font-mono text-[11px] uppercase tracking-wide">{t("att.type")}</TableHead>
               <TableHead className="font-mono text-[11px] uppercase tracking-wide">{t("att.match")}</TableHead>
             </TableRow>
@@ -209,7 +210,7 @@ async function Punches({ sp, canExport }: { sp: SP; canExport: boolean }) {
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="h-28 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="h-28 text-center text-muted-foreground">
                   {t("att.noPunches")}
                 </TableCell>
               </TableRow>
@@ -229,6 +230,9 @@ async function Punches({ sp, canExport }: { sp: SP; canExport: boolean }) {
                 </TableCell>
                 <TableCell>{p.employee?.department.name ?? "—"}</TableCell>
                 <TableCell>{p.device.name}</TableCell>
+                <TableCell className="tabular-nums" title={p.accuracyM != null ? t("att.accuracy", { m: p.accuracyM }) : undefined}>
+                  {p.distanceM != null ? `${p.distanceM} m` : "—"}
+                </TableCell>
                 <TableCell>{p.type === "IN" ? t("att.checkIn") : t("att.checkOut")}</TableCell>
                 <TableCell>{p.employee ? pill("ok", t("att.matched")) : pill("warn", t("att.unknownPin"))}</TableCell>
               </TableRow>
