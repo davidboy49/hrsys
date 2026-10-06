@@ -49,3 +49,6 @@ next-env.d.ts
 .neon
 .vercel-login.log
 .vercel
+
+.vercel
+.env*
