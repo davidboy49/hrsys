@@ -4,6 +4,7 @@ import { atLeast, getSession } from "@/lib/session"
 import { buildPunchWhere, parsePunchFilters } from "@/lib/punches"
 import { localDateKey } from "@/lib/format"
 import { audit } from "@/lib/audit"
+import { rateLimit } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -13,6 +14,7 @@ const MAX_ROWS = 50000
 export async function GET(req: Request) {
   const user = await getSession()
   if (!user || !atLeast(user.role, "HR")) return new Response("Forbidden", { status: 403 })
+  if (!(await rateLimit(`export:${user.id}`, 30, 600)).ok) return new Response("Too many exports. Wait a few minutes.", { status: 429 })
   const sp = Object.fromEntries(new URL(req.url).searchParams.entries())
   const rows = await db.attendancePunch.findMany({
     where: buildPunchWhere(parsePunchFilters(sp)),

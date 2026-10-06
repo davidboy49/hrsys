@@ -6,17 +6,28 @@ import type { RawPunch } from "@/lib/devices/types"
 /**
  * ZKTeco "push" (ADMS) endpoint. A device configured with this server address posts attendance logs here.
  * Devices are matched by serial number (SN) against a device in PUSH mode.
- * Optional hardening: set ADMS_TOKEN and add ?token=... to the device's server path.
+ * Requires ADMS_TOKEN: add ?token=<value> to the server path configured on the device.
  */
 export const dynamic = "force-dynamic"
 
+import { timingSafeEqual } from "node:crypto"
+import { rateLimit } from "@/lib/rate-limit"
+
 function authorised(url: URL) {
   const t = process.env.ADMS_TOKEN
-  return !t || url.searchParams.get("token") === t
+  const given = url.searchParams.get("token") ?? ""
+  if (!t || t.length < 16 || given.length !== t.length) return false
+  return timingSafeEqual(Buffer.from(given), Buffer.from(t))
+}
+
+async function tooMany(req: Request) {
+  const ip = (req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown").trim()
+  return !(await rateLimit(`iclock:${ip}`, 300, 60)).ok
 }
 
 export async function GET(req: Request) {
   const url = new URL(req.url)
+  if (await tooMany(req)) return new Response("Too many requests", { status: 429 })
   if (!authorised(url)) return new Response("Unauthorized", { status: 401 })
   const sn = url.searchParams.get("SN")
   // handshake: reply with the options the device expects
@@ -27,7 +38,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const url = new URL(req.url)
+  if (await tooMany(req)) return new Response("Too many requests", { status: 429 })
   if (!authorised(url)) return new Response("Unauthorized", { status: 401 })
+  if (Number(req.headers.get("content-length") ?? 0) > 1_000_000) return new Response("Too large", { status: 413 })
   const sn = url.searchParams.get("SN")
   const table = url.searchParams.get("table")
   if (!sn) return new Response("Missing SN", { status: 400 })

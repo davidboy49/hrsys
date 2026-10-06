@@ -8,12 +8,16 @@ import { rebuildDaily } from "@/lib/attendance"
 import { localDateKey } from "@/lib/format"
 import { audit } from "@/lib/audit"
 import { qrDeviceFor } from "@/lib/qr-attendance"
+import { rateLimit } from "@/lib/rate-limit"
 
 export type PunchResult = { ok: true; type: "IN" | "OUT"; at: string; location: string } | { ok: false; error: string }
 
 export async function punchByQr(token: string, type: "IN" | "OUT", geo: { lat: number; lng: number; accuracy: number } | null): Promise<PunchResult> {
   const user = await getSession()
   if (!user) return { ok: false, error: "Please sign in first." }
+
+  if (!(await rateLimit(`punch:${user.id}`, 10, 60)).ok) return { ok: false, error: "Too many attempts. Wait a minute and try again." }
+  if (type !== "IN" && type !== "OUT") return { ok: false, error: "Choose check in or check out." }
 
   const v = verifyToken(token)
   if (!v.ok) return { ok: false, error: v.reason === "expired" ? "This QR code has expired. Scan the code on the screen again." : "This QR code is not valid." }

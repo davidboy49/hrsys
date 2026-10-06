@@ -58,6 +58,7 @@ model User {
   role         Role      @default(HR)
   isActive     Boolean   @default(true)
   failedLogins Int       @default(0)
+  tokenVersion Int       @default(0)
   lockedUntil  DateTime?
   lastLoginAt  DateTime?
   employeeId   String?   @unique
@@ -270,4 +271,11 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+/// Fixed-window counters for rate limiting (shared across serverless instances).
+model RateLimit {
+  key         String   @id
+  windowStart DateTime @default(now())
+  count       Int      @default(1)
 }

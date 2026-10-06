@@ -6,6 +6,9 @@ import { z } from "zod"
 import { db } from "@/lib/db"
 import { assertRole, getSession } from "@/lib/session"
 import { audit } from "@/lib/audit"
+import { BCRYPT_COST, passwordSchema } from "@/lib/password"
+import { rateLimit, waitText } from "@/lib/rate-limit"
+import { createSession } from "@/lib/session"
 
 type R = { error?: string; ok?: boolean }
 
@@ -26,7 +29,7 @@ export async function saveSettings(form: FormData): Promise<R> {
   return { ok: true }
 }
 
-const pw = z.string().min(8, "Password must be at least 8 characters")
+const pw = passwordSchema
 
 const newUser = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -43,7 +46,7 @@ export async function createUser(form: FormData): Promise<R> {
   if (await db.user.findUnique({ where: { email: p.data.email } })) return { error: "A user with this email already exists" }
   const employeeId = p.data.employeeId || null
   if (employeeId && (await db.user.findUnique({ where: { employeeId } }))) return { error: "That employee already has a login" }
-  const u = await db.user.create({ data: { name: p.data.name, email: p.data.email, role: p.data.role, employeeId, passwordHash: await bcrypt.hash(p.data.password, 10) } })
+  const u = await db.user.create({ data: { name: p.data.name, email: p.data.email, role: p.data.role, employeeId, passwordHash: await bcrypt.hash(p.data.password, BCRYPT_COST) } })
   await audit(admin.id, "create", "User", u.id, u.email)
   revalidatePath("/settings")
   return { ok: true }
@@ -66,6 +69,7 @@ export async function updateUser(id: string, patch: { name?: string; email?: str
     data.email = email
   }
   if (patch.role) data.role = patch.role
+  if (patch.role || patch.isActive === false || patch.password !== undefined) data.tokenVersion = { increment: 1 }
   if (patch.employeeId !== undefined) {
     const eid = patch.employeeId || null
     if (eid && (await db.user.findFirst({ where: { employeeId: eid, NOT: { id } } }))) return { error: "That employee already has a login" }
@@ -75,7 +79,7 @@ export async function updateUser(id: string, patch: { name?: string; email?: str
   if (patch.password !== undefined) {
     const p = pw.safeParse(patch.password)
     if (!p.success) return { error: p.error.issues[0].message }
-    data.passwordHash = await bcrypt.hash(patch.password, 10)
+    data.passwordHash = await bcrypt.hash(patch.password, BCRYPT_COST)
     data.failedLogins = 0
     data.lockedUntil = null
   }
@@ -88,13 +92,18 @@ export async function updateUser(id: string, patch: { name?: string; email?: str
 export async function changeOwnPassword(form: FormData): Promise<R> {
   const s = await getSession()
   if (!s) return { error: "Not signed in" }
+  const lim = await rateLimit(`pw:${s.id}`, 5, 15 * 60)
+  if (!lim.ok) return { error: `Too many attempts. Try again in ${waitText(lim.retryAfter)}.` }
   const cur = String(form.get("current") ?? "")
   const next = String(form.get("next") ?? "")
   const p = pw.safeParse(next)
   if (!p.success) return { error: p.error.issues[0].message }
   const u = await db.user.findUnique({ where: { id: s.id } })
   if (!u || !(await bcrypt.compare(cur, u.passwordHash))) return { error: "Current password is incorrect" }
-  await db.user.update({ where: { id: u.id }, data: { passwordHash: await bcrypt.hash(next, 10) } })
+  if (next === cur) return { error: "Choose a password different from the current one" }
+  const updated = await db.user.update({ where: { id: u.id }, data: { passwordHash: await bcrypt.hash(next, BCRYPT_COST), tokenVersion: { increment: 1 } } })
+  // every other signed-in device is signed out; keep this one
+  await createSession({ id: updated.id, tokenVersion: updated.tokenVersion }, true)
   await audit(u.id, "password", "User", u.id)
   return { ok: true }
 }

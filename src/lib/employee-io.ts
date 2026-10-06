@@ -100,6 +100,7 @@ export async function runImport(buf: ArrayBuffer, commit: boolean): Promise<Impo
   await wb.xlsx.load(buf)
   const ws = wb.getWorksheet("Employees") ?? wb.worksheets[0]
   if (!ws) throw new Error("The file has no sheets.")
+  if (ws.rowCount > 5001) throw new Error("The file has more than 5,000 rows. Split it into smaller files.")
 
   const head = HEADERS.map((_, i) => cellText(ws.getRow(1).getCell(i + 1).value))
   const bad = HEADERS.filter((h, i) => head[i].toLowerCase() !== h.toLowerCase())

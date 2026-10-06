@@ -25,16 +25,26 @@ function s3() {
  *   "s3:<key>"     in the Neon bucket (served by /api/photo, login required)
  *   "/uploads/..." on local disk (development only)
  */
+/** The browser-supplied type can be faked, so look at the first bytes of the file itself. */
+function sniffImage(b: Buffer): "image/jpeg" | "image/png" | "image/webp" | null {
+  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg"
+  if (b.length > 8 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png"
+  if (b.length > 12 && b.subarray(0, 4).toString("ascii") === "RIFF" && b.subarray(8, 12).toString("ascii") === "WEBP") return "image/webp"
+  return null
+}
+
 export async function savePhoto(file: File, name: string): Promise<string> {
   if (!OK.includes(file.type)) throw new Error("Photo must be a JPG, PNG or WebP image.")
   if (file.size > MAX_PHOTO) throw new Error("Photo must be 2 MB or smaller.")
-  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg"
-  const file_name = `${name}-${Date.now()}.${ext}`
   const body = Buffer.from(await file.arrayBuffer())
+  const real = sniffImage(body)
+  if (!real) throw new Error("That file is not a valid JPG, PNG or WebP image.")
+  const ext = real === "image/png" ? "png" : real === "image/webp" ? "webp" : "jpg"
+  const file_name = `${name}-${Date.now()}.${ext}`
 
   if (s3Configured()) {
     const key = `employees/${file_name}`
-    await s3().send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body, ContentType: file.type }))
+    await s3().send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body, ContentType: real }))
     return `s3:${key}`
   }
   if (process.env.VERCEL) throw new Error("Photo storage is not configured. Add the Neon bucket variables (AWS_ENDPOINT_URL_S3, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION) to the Vercel project.")

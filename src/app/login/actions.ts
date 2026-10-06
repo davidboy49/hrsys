@@ -5,45 +5,55 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { createSession, destroySession } from "@/lib/session"
 import { audit } from "@/lib/audit"
+import { clientIp, rateLimit, waitText } from "@/lib/rate-limit"
 
 export type LoginState = { error?: string }
 
 const MAX_FAILS = 5
 const LOCK_MIN = 15
+// compared when the email is unknown, so known and unknown emails take the same time
+let dummyHash: Promise<string> | null = null
+const dummy = () => (dummyHash ??= bcrypt.hash("not-a-real-password", 12))
 
 export async function login(_: LoginState, form: FormData): Promise<LoginState> {
-  const email = String(form.get("email") ?? "").trim().toLowerCase()
-  const password = String(form.get("password") ?? "")
+  const email = String(form.get("email") ?? "").trim().toLowerCase().slice(0, 254)
+  const password = String(form.get("password") ?? "").slice(0, 200)
   const remember = form.get("remember") === "on"
   const nextRaw = String(form.get("next") ?? "")
   // only same-site paths, never an absolute or protocol-relative URL
-  const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") && !nextRaw.startsWith("/login") ? nextRaw : null
+  const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") && !nextRaw.startsWith("/\\") && !nextRaw.startsWith("/login") ? nextRaw : null
   if (!email || !password) return { error: "Enter your email and password." }
+
+  // per-IP limit: stops one source trying many accounts or many passwords
+  const ip = await clientIp()
+  const lim = await rateLimit(`login:ip:${ip}`, 30, 15 * 60)
+  if (!lim.ok) return { error: `Too many sign-in attempts from this network. Try again in ${waitText(lim.retryAfter)}.` }
 
   const user = await db.user.findUnique({ where: { email } })
   const generic = { error: "Email or password is incorrect." }
-  if (!user || !user.isActive) return generic
 
-  if (user.lockedUntil && user.lockedUntil > new Date()) {
+  if (user?.lockedUntil && user.lockedUntil > new Date()) {
+    await bcrypt.compare(password, user.passwordHash) // keep timing similar
     const mins = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000)
     return { error: `Too many attempts. Try again in ${mins} minute${mins === 1 ? "" : "s"}.` }
   }
 
-  const ok = await bcrypt.compare(password, user.passwordHash)
-  if (!ok) {
-    const fails = user.failedLogins + 1
-    await db.user.update({
-      where: { id: user.id },
-      data: fails >= MAX_FAILS
-        ? { failedLogins: 0, lockedUntil: new Date(Date.now() + LOCK_MIN * 60000) }
-        : { failedLogins: fails },
-    })
+  const ok = await bcrypt.compare(password, user?.passwordHash ?? (await dummy()))
+  if (!user || !user.isActive || !ok) {
+    if (user) {
+      const fails = user.failedLogins + 1
+      await db.user.update({
+        where: { id: user.id },
+        data: fails >= MAX_FAILS ? { failedLogins: 0, lockedUntil: new Date(Date.now() + LOCK_MIN * 60000) } : { failedLogins: fails },
+      })
+    }
+    await audit(user?.id ?? null, "login-failed", "User", user?.id, `ip ${ip}`)
     return generic
   }
 
   await db.user.update({ where: { id: user.id }, data: { failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() } })
-  await createSession({ id: user.id, email: user.email, name: user.name, role: user.role }, remember)
-  await audit(user.id, "login", "User", user.id)
+  await createSession({ id: user.id, tokenVersion: user.tokenVersion }, remember)
+  await audit(user.id, "login", "User", user.id, `ip ${ip}`)
   redirect(next ?? (user.role === "EMPLOYEE" ? "/scan" : "/employees"))
 }
 

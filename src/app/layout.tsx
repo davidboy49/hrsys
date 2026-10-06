@@ -10,6 +10,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: { default: "PeopleDesk", template: "%s · PeopleDesk" },
   description: "HR management: employees, attendance and masterdata",
+  robots: { index: false, follow: false },
 }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

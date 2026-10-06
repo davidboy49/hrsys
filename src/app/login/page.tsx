@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation"
 import { Users } from "lucide-react"
+import { getSession } from "@/lib/session"
 import { LoginForm } from "./login-form"
 import { LoginArt } from "./login-art"
 
@@ -6,6 +8,8 @@ export const metadata = { title: "Sign in" }
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams
+  // already signed in (and still allowed in): skip the form
+  if (await getSession()) redirect(typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/")
   return (
     <main className="grid min-h-svh lg:grid-cols-2">
       <LoginArt />
