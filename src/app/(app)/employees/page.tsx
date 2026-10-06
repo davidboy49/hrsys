@@ -19,16 +19,16 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
   const sortKey = (SORTS as readonly string[]).includes(one(sp.sort)) ? one(sp.sort) : "employeeNo"
   const dir = one(sp.dir) === "desc" ? "desc" : "asc"
   const where = buildWhere(f)
-  const total = await db.employee.count({ where })
-  const pages = Math.max(1, Math.ceil(total / size))
-  const page = Math.min(Math.max(1, parseInt(one(sp.page), 10) || 1), pages)
-
-  const [emps, lk, activeCount] = await Promise.all([
-    db.employee.findMany({ where, include: employeeInclude, orderBy: buildOrderBy(sortKey, dir), skip: (page - 1) * size, take: size }),
+  // one parallel round for everything that does not depend on the page number
+  const [total, lk, activeCount, all] = await Promise.all([
+    db.employee.count({ where }),
     lookups(),
     db.employee.count({ where: { deletedAt: null, status: { countsAsActive: true } } }),
+    db.employee.count({ where: { deletedAt: null } }),
   ])
-  const all = await db.employee.count({ where: { deletedAt: null } })
+  const pages = Math.max(1, Math.ceil(total / size))
+  const page = Math.min(Math.max(1, parseInt(one(sp.page), 10) || 1), pages)
+  const emps = await db.employee.findMany({ where, include: employeeInclude, orderBy: buildOrderBy(sortKey, dir), skip: (page - 1) * size, take: size })
 
   const canEdit = atLeast(user.role, "HR")
   const rows: Row[] = emps.map((e) => ({

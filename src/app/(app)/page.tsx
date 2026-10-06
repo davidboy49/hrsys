@@ -32,7 +32,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const today = new Date(localDateKey(now) + "T00:00:00.000Z")
   const live = { deletedAt: null }
 
-  const [active, total, joiners, ending, presentToday, byDept, endingList, recent, unknownPunches] = await Promise.all([
+  const [active, total, joiners, ending, presentToday, byDept, endingList, recent, unknownPunches, depts] = await Promise.all([
     db.employee.count({ where: { ...live, status: { countsAsActive: true } } }),
     db.employee.count({ where: live }),
     db.employee.count({ where: { ...live, joiningDate: { gte: ago30 } } }),
@@ -42,8 +42,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     db.employee.findMany({ where: { ...live, status: { countsAsActive: true }, contractEnd: { gte: now, lte: in60 } }, orderBy: { contractEnd: "asc" }, take: 6, include: { designation: true } }),
     db.employee.findMany({ where: live, orderBy: { createdAt: "desc" }, take: 5, include: { department: true } }),
     db.attendancePunch.count({ where: { employeeId: null } }),
+    db.department.findMany({ select: { id: true, name: true } }),
   ])
-  const depts = await db.department.findMany({ where: { id: { in: byDept.map((d) => d.departmentId) } } })
   const rows = byDept.map((d) => ({ name: depts.find((x) => x.id === d.departmentId)?.name ?? "—", n: d._count })).sort((a, b) => b.n - a.n)
   const max = Math.max(1, ...rows.map((r) => r.n))
 
