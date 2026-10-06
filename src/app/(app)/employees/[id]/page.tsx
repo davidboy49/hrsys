@@ -106,6 +106,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
               )}
             </Item>
             {canEdit && <Item label={t("emp.rate")}>{fmtRate(e.rateAmount, e.rateBasis, e.currency, t(BASIS_KEY[e.rateBasis]))}</Item>}
+            {e.leavingDate && <Item label={t("form.leavingDate")}>{fmtDate(e.leavingDate)}</Item>}
             <Item label={t("form.location")}>{e.location?.name}</Item>
             <Item label={t("form.shift")}>{e.shift ? `${e.shift.name} (${e.shift.startTime}–${e.shift.endTime})` : ""}</Item>
             <Item label={t("form.zkPin")}>

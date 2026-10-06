@@ -32,6 +32,7 @@ export type FormValues = {
   shiftId: string
   joiningDate: string
   contractEnd: string
+  leavingDate: string
   rateAmount: string
   rateBasis: string
   currency: string
@@ -174,6 +175,7 @@ export function EmployeeForm({
           {field("joiningDate", t("emp.joining"), text("joiningDate", { type: "date", required: true }))}
           {field("locationId", t("form.location"), select("locationId", lookups.locations, "—"))}
           {field("shiftId", t("form.shift"), select("shiftId", lookups.shifts, "—"))}
+          {field("leavingDate", t("form.leavingDate"), text("leavingDate", { type: "date" }), t("form.leavingHint"))}
           {field("zkPin", t("form.zkPin"), text("zkPin", { className: "font-mono" }), t("form.zkPinHint"))}
         </div>
       </section>

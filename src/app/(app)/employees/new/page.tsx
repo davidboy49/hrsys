@@ -16,7 +16,7 @@ export default async function NewEmployeePage() {
   const values: FormValues = {
     employeeNo: no, nameEn: "", nameKm: "", gender: "", dob: "", phone: "", email: "", nationalId: "", address: "",
     departmentId: "", designationId: "", contractTypeId: "", statusId: active?.id ?? "", locationId: "", shiftId: "",
-    joiningDate: new Date().toISOString().slice(0, 10), contractEnd: "", rateAmount: "", rateBasis: "MONTH", currency: cur?.value ?? "USD", zkPin: "", photoUrl: null,
+    joiningDate: new Date().toISOString().slice(0, 10), contractEnd: "", leavingDate: "", rateAmount: "", rateBasis: "MONTH", currency: cur?.value ?? "USD", zkPin: "", photoUrl: null,
   }
   return (
     <>

@@ -33,6 +33,7 @@ const schema = z.object({
   shiftId: opt(z.string()),
   joiningDate: z.string().min(1, "err.joiningReq"),
   contractEnd: opt(z.string()),
+  leavingDate: opt(z.string()),
   rateAmount: z.coerce.number({ message: "err.rateNum" }).min(0, "err.rateNeg"),
   rateBasis: z.enum(["MONTH", "DAY", "HOUR"]),
   currency: z.string().min(3).max(3),
@@ -61,6 +62,7 @@ export async function saveEmployee(id: string | null, _: FormState, form: FormDa
     if (dupPin) return { error: t("err.fixFields"), fields: { zkPin: t("err.dupPin", { v: dupPin.nameEn }) } }
   }
 
+  const status = await db.employeeStatus.findUnique({ where: { id: d.statusId } })
   const photo = form.get("photo")
   const removeFlag = form.get("removePhoto") === "1"
   const prev = id ? await db.employee.findUnique({ where: { id } }) : null
@@ -91,6 +93,8 @@ export async function saveEmployee(id: string | null, _: FormState, form: FormDa
     shiftId: d.shiftId,
     joiningDate: toDate(d.joiningDate)!,
     contractEnd: toDate(d.contractEnd),
+    // someone who left keeps a leaving date (today if none was entered); anyone active has none
+    leavingDate: status && !status.countsAsActive ? (toDate(d.leavingDate) ?? prev?.leavingDate ?? toDate(new Date().toISOString().slice(0, 10))) : null,
     rateAmount: d.rateAmount,
     rateBasis: d.rateBasis,
     currency: d.currency.toUpperCase(),

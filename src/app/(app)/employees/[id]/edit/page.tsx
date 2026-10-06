@@ -34,7 +34,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
     employeeNo: e.employeeNo, nameEn: e.nameEn, nameKm: e.nameKm ?? "", gender: e.gender ?? "", dob: toInput(e.dob), phone: e.phone ?? "",
     email: e.email ?? "", nationalId: e.nationalId ?? "", address: e.address ?? "", departmentId: e.departmentId, designationId: e.designationId,
     contractTypeId: e.contractTypeId, statusId: e.statusId, locationId: e.locationId ?? "", shiftId: e.shiftId ?? "", joiningDate: toInput(e.joiningDate),
-    contractEnd: toInput(e.contractEnd), rateAmount: String(e.rateAmount), rateBasis: e.rateBasis, currency: e.currency, zkPin: e.zkPin ?? "", photoUrl: e.photoUrl,
+    contractEnd: toInput(e.contractEnd), leavingDate: toInput(e.leavingDate), rateAmount: String(e.rateAmount), rateBasis: e.rateBasis, currency: e.currency, zkPin: e.zkPin ?? "", photoUrl: e.photoUrl,
   }
   return (
     <>
