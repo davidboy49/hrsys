@@ -41,8 +41,9 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
   })
   if (!e) notFound()
   const canEdit = atLeast(user.role, "HR")
-  const [history, daily] = await Promise.all([
+  const [history, transfers, daily] = await Promise.all([
     canEdit ? db.rateHistory.findMany({ where: { employeeId: id }, orderBy: { effectiveFrom: "desc" }, take: 10 }) : Promise.resolve([]),
+    canEdit ? db.branchTransfer.findMany({ where: { employeeId: id }, orderBy: [{ effectiveFrom: "desc" }, { createdAt: "desc" }], take: 10 }) : Promise.resolve([]),
     db.attendanceDaily.findMany({ where: { employeeId: id }, orderBy: { date: "desc" }, take: 14 }),
   ])
   // eslint-disable-next-line react-hooks/purity
@@ -133,6 +134,34 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
                   <TableRow key={h.id}>
                     <TableCell>{fmtDate(h.effectiveFrom)}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmtRate(h.amount, h.basis, h.currency, t(BASIS_KEY[h.basis]))}</TableCell>
+                    <TableCell className="text-muted-foreground">{h.changedBy ?? "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </section>
+      )}
+
+      {canEdit && transfers.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold">{t("profile.branchHistory")}</h2>
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("profile.effective")}</TableHead>
+                  <TableHead>{t("profile.from")}</TableHead>
+                  <TableHead>{t("profile.to")}</TableHead>
+                  <TableHead>{t("profile.changedBy")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transfers.map((h) => (
+                  <TableRow key={h.id}>
+                    <TableCell>{fmtDate(h.effectiveFrom)}</TableCell>
+                    <TableCell>{h.fromName ?? "—"}</TableCell>
+                    <TableCell>{h.toName ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{h.changedBy ?? "—"}</TableCell>
                   </TableRow>
                 ))}

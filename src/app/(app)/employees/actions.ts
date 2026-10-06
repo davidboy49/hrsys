@@ -107,16 +107,26 @@ export async function saveEmployee(id: string | null, _: FormState, form: FormDa
     await db.employee.update({ where: { id }, data })
     const changed = prev && (Number(prev.rateAmount) !== d.rateAmount || prev.rateBasis !== d.rateBasis || prev.currency !== data.currency)
     if (changed) await db.rateHistory.create({ data: { employeeId: id, amount: d.rateAmount, basis: d.rateBasis, currency: data.currency, effectiveFrom: new Date(), changedBy: user.email } })
+    if (prev && prev.locationId !== d.locationId) await logTransfer(id, prev.locationId, d.locationId, new Date(), user.email)
     if (photoUrl !== undefined) await removePhoto(prev?.photoUrl)
     await audit(user.id, "update", "Employee", id, d.nameEn)
   } else {
     const created = await db.employee.create({ data })
     savedId = created.id
     await db.rateHistory.create({ data: { employeeId: created.id, amount: d.rateAmount, basis: d.rateBasis, currency: data.currency, effectiveFrom: data.joiningDate, changedBy: user.email } })
+    if (d.locationId) await logTransfer(created.id, null, d.locationId, data.joiningDate, user.email)
     await audit(user.id, "create", "Employee", created.id, d.nameEn)
   }
   revalidatePath("/employees")
   redirect(`/employees/${savedId}`)
+}
+
+async function logTransfer(employeeId: string, fromId: string | null, toId: string | null, effectiveFrom: Date, changedBy: string) {
+  const [from, to] = await Promise.all([
+    fromId ? db.location.findUnique({ where: { id: fromId } }) : null,
+    toId ? db.location.findUnique({ where: { id: toId } }) : null,
+  ])
+  await db.branchTransfer.create({ data: { employeeId, fromName: from?.name ?? null, toName: to?.name ?? null, effectiveFrom, changedBy } })
 }
 
 export async function deleteEmployees(ids: string[]) {

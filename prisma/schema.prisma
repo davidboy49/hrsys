@@ -183,6 +183,7 @@ model Employee {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   rateHistory    RateHistory[]
+  transfers      BranchTransfer[]
   user           User?
   punches        AttendancePunch[]
   daily          AttendanceDaily[]
@@ -204,6 +205,20 @@ model RateHistory {
   effectiveFrom DateTime  @db.Date
   changedBy     String?
   createdAt     DateTime  @default(now())
+}
+
+/// One row each time an employee is assigned or moved to another branch (Location). Names are copied so history survives renames.
+model BranchTransfer {
+  id            String   @id @default(cuid())
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  fromName      String?
+  toName        String?
+  effectiveFrom DateTime @db.Date
+  changedBy     String?
+  createdAt     DateTime @default(now())
+
+  @@index([employeeId])
 }
 
 model Device {
