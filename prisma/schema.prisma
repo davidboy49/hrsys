@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum Role {
+  ADMIN
+  HR
+  MANAGER
+  EMPLOYEE
+}
+
+enum RateBasis {
+  MONTH
+  DAY
+  HOUR
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum DeviceMode {
+  MOCK
+  PULL
+  PUSH
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+}
+
+enum PunchType {
+  IN
+  OUT
+}
+
+enum DailyState {
+  PRESENT
+  LATE
+  ABSENT
+  INCOMPLETE
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         Role      @default(HR)
+  isActive     Boolean   @default(true)
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  auditLogs    AuditLog[]
+}
+
+model Department {
+  id        String        @id @default(cuid())
+  code      String        @unique
+  name      String
+  parentId  String?
+  parent    Department?   @relation("DeptTree", fields: [parentId], references: [id])
+  children  Department[]  @relation("DeptTree")
+  isActive  Boolean       @default(true)
+  employees Employee[]
+  designations Designation[]
+}
+
+model Designation {
+  id           String      @id @default(cuid())
+  code         String      @unique
+  name         String
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  isActive     Boolean     @default(true)
+  employees    Employee[]
+}
+
+model ContractType {
+  id               String     @id @default(cuid())
+  code             String     @unique
+  name             String
+  requiresEndDate  Boolean    @default(false)
+  defaultRateBasis RateBasis  @default(MONTH)
+  isActive         Boolean    @default(true)
+  employees        Employee[]
+}
+
+model EmployeeStatus {
+  id             String     @id @default(cuid())
+  code           String     @unique
+  name           String
+  color          String     @default("gray")
+  countsAsActive Boolean    @default(true)
+  isActive       Boolean    @default(true)
+  employees      Employee[]
+}
+
+model Location {
+  id        String     @id @default(cuid())
+  code      String     @unique
+  name      String
+  address   String?
+  isActive  Boolean    @default(true)
+  devices   Device[]
+  employees Employee[]
+}
+
+model Shift {
+  id         String     @id @default(cuid())
+  code       String     @unique
+  name       String
+  startTime  String // HH:mm
+  endTime    String // HH:mm
+  graceMin   Int        @default(10)
+  isActive   Boolean    @default(true)
+  employees  Employee[]
+}
+
+model Holiday {
+  id       String   @id @default(cuid())
+  code     String   @unique
+  name     String
+  date     DateTime @db.Date
+  isActive Boolean  @default(true)
+}
+
+model Employee {
+  id             String         @id @default(cuid())
+  employeeNo     String         @unique
+  nameEn         String
+  nameKm         String?
+  photoUrl       String?
+  gender         Gender?
+  dob            DateTime?      @db.Date
+  phone          String?
+  email          String?
+  nationalId     String?
+  address        String?
+  departmentId   String
+  department     Department     @relation(fields: [departmentId], references: [id])
+  designationId  String
+  designation    Designation    @relation(fields: [designationId], references: [id])
+  contractTypeId String
+  contractType   ContractType   @relation(fields: [contractTypeId], references: [id])
+  statusId       String
+  status         EmployeeStatus @relation(fields: [statusId], references: [id])
+  locationId     String?
+  location       Location?      @relation(fields: [locationId], references: [id])
+  shiftId        String?
+  shift          Shift?         @relation(fields: [shiftId], references: [id])
+  joiningDate    DateTime       @db.Date
+  contractEnd    DateTime?      @db.Date
+  rateAmount     Decimal        @db.Decimal(12, 2)
+  rateBasis      RateBasis      @default(MONTH)
+  currency       String         @default("USD")
+  zkPin          String?        @unique
+  deletedAt      DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  rateHistory    RateHistory[]
+  punches        AttendancePunch[]
+  daily          AttendanceDaily[]
+
+  @@index([departmentId])
+  @@index([designationId])
+  @@index([statusId])
+  @@index([joiningDate])
+  @@index([deletedAt])
+}
+
+model RateHistory {
+  id            String    @id @default(cuid())
+  employeeId    String
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  amount        Decimal   @db.Decimal(12, 2)
+  basis         RateBasis
+  currency      String
+  effectiveFrom DateTime  @db.Date
+  changedBy     String?
+  createdAt     DateTime  @default(now())
+}
+
+model Device {
+  id         String       @id @default(cuid())
+  name       String
+  model      String?
+  ip         String?
+  port       Int          @default(4370)
+  serialNo   String?
+  mode       DeviceMode   @default(MOCK)
+  status     DeviceStatus @default(ONLINE)
+  locationId String?
+  location   Location?    @relation(fields: [locationId], references: [id])
+  lastSyncAt DateTime?
+  isActive   Boolean      @default(true)
+  punches    AttendancePunch[]
+  syncLogs   SyncLog[]
+}
+
+model AttendancePunch {
+  id         String    @id @default(cuid())
+  deviceId   String
+  device     Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  pin        String
+  punchedAt  DateTime
+  type       PunchType @default(IN)
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+
+  @@unique([deviceId, pin, punchedAt])
+  @@index([punchedAt])
+  @@index([employeeId])
+}
+
+model AttendanceDaily {
+  id         String     @id @default(cuid())
+  employeeId String
+  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date       DateTime   @db.Date
+  firstIn    DateTime?
+  lastOut    DateTime?
+  workedMin  Int        @default(0)
+  lateMin    Int        @default(0)
+  state      DailyState @default(PRESENT)
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+model SyncLog {
+  id        String   @id @default(cuid())
+  deviceId  String
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  startedAt DateTime @default(now())
+  records   Int      @default(0)
+  ok        Boolean
+  message   String?
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

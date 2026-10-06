@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PeopleDesk
 
-## Getting Started
+HR system: employees, attendance sync from ZKTeco devices (mock for now), masterdata, settings.
+Next.js 16 (App Router), shadcn/ui, Tailwind, lucide-react, PostgreSQL with Prisma.
 
-First, run the development server:
+## Run locally (no Docker)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run db:local        # terminal 1: starts a local PostgreSQL on port 5433 (keep it running)
+npm run db:migrate      # terminal 2: creates the tables
+npm run db:seed         # masterdata, 40 sample employees, 2 mock devices, admin user
+npm run dev             # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Sign in with `admin@company.com` / `ChangeMe123!` and change the password under Settings > My account.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploy to Vercel with a Neon database
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Database.** In the Vercel dashboard open your project, go to *Storage* > *Create Database* > **Neon** (free tier).
+   Connect it to the project. Vercel adds `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` automatically.
+2. **Photo storage.** *Storage* > *Create* > **Blob**, connect it. This adds `BLOB_READ_WRITE_TOKEN`.
+   (Vercel has no writable disk, so photos must go to Blob.)
+3. **Secret.** Add an environment variable `AUTH_SECRET` with the output of `openssl rand -base64 32`.
+4. **Deploy.** Push this repo to GitHub, import it in Vercel. The `vercel-build` script runs
+   `prisma migrate deploy` before `next build`, so tables are created on the first deploy.
+5. **First admin and masterdata.** From your computer, once:
+   ```bash
+   # PowerShell
+   $env:DATABASE_URL="<Neon unpooled URL>"; $env:DATABASE_URL_UNPOOLED=$env:DATABASE_URL
+   $env:SEED_SAMPLE="0"; $env:SEED_ADMIN_EMAIL="you@company.com"; $env:SEED_ADMIN_PASSWORD="a-strong-password"
+   npm run db:seed
+   ```
+   `SEED_SAMPLE=0` skips the 40 demo employees.
 
-## Learn More
+## Roles
 
-To learn more about Next.js, take a look at the following resources:
+| Role | Can do |
+| --- | --- |
+| Admin | Everything, including users, devices, settings, audit log |
+| HR | Employees (with rate), import/export, masterdata, attendance sync |
+| Manager | Read-only employees (no rate) and attendance |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Attendance and ZKTeco
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Devices live under Attendance. **Mock** mode generates realistic punches for employees that have a ZKTeco PIN.
+- **Push (ADMS)** is implemented: point the device server address at `https://<your-site>/iclock/cdata`
+  (optionally `?token=...` with `ADMS_TOKEN` set) and give the device record the same serial number.
+  Because Vercel is on the public internet, devices on a private LAN can reach it outbound, which is why push is the
+  recommended production mode.
+- **Pull (TCP 4370)** is a stub in `src/lib/devices/zk.ts`; Vercel cannot reach a private LAN, so it needs a local agent.
+- Punches become daily records (first in, last out, late, missing check-out) using each employee's shift.
 
-## Deploy on Vercel
+## Notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Import is all-or-nothing: every row is validated first, nothing is saved if any row fails. Limit 4 MB.
+- Time zone is fixed to Asia/Phnom_Penh (`src/lib/format.ts`).
+- Next.js 16 uses `src/proxy.ts` (formerly middleware) to require sign-in.
