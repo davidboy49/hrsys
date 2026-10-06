@@ -43,16 +43,11 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const isAdmin = user.role === "ADMIN"
   const today = localDateKey(new Date())
 
-  const tabs = [
-    { id: "punches", label: t("att.tab.punches") },
-    { id: "daily", label: t("att.tab.daily") },
-    { id: "devices", label: t("att.tab.devices") },
-  ]
 
   return (
     <>
       <PageHeader
-        title={t("nav.attendance")}
+        title={t(`att.tab.${tab}`)}
         description={t("att.desc")}
         actions={
           canEdit ? (
@@ -65,17 +60,6 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
           ) : undefined
         }
       />
-      <nav className="mb-5 flex gap-1 border-b">
-        {tabs.map((t) => (
-          <Link
-            key={t.id}
-            href={t.id === "punches" ? "/attendance" : `/attendance?tab=${t.id}`}
-            className={cn("-mb-px border-b-2 px-3 py-2 text-sm", tab === t.id ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground")}
-          >
-            {t.label}
-          </Link>
-        ))}
-      </nav>
 
       {tab === "devices" && <Devices canEdit={canEdit} isAdmin={isAdmin} today={today} />}
       {tab === "punches" && <Punches sp={sp} canExport={canEdit} />}

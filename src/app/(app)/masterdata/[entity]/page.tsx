@@ -1,11 +1,9 @@
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { db } from "@/lib/db"
 import { requireRole } from "@/lib/session"
-import { ENTITIES, entityByKey } from "@/lib/masterdata"
+import { entityByKey } from "@/lib/masterdata"
 import { PageHeader } from "@/components/page-header"
 import { fmtDate } from "@/lib/format"
-import { cn } from "@/lib/utils"
 import { MasterTable, type MRow } from "./master-table"
 import { getT } from "@/i18n/server"
 
@@ -75,18 +73,7 @@ export default async function MasterdataPage({ params }: { params: Promise<{ ent
 
   return (
     <>
-      <PageHeader title={t("nav.masterdata")} description={t("md.desc")} />
-      <nav className="mb-4 flex flex-wrap gap-1.5" aria-label={t("md.lists")}>
-        {ENTITIES.map((e) => (
-          <Link
-            key={e.key}
-            href={`/masterdata/${e.key}`}
-            className={cn("rounded-full px-3 py-1 text-sm", e.key === ent.key ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground")}
-          >
-            {t(e.label)}
-          </Link>
-        ))}
-      </nav>
+      <PageHeader title={t(ent.label)} description={t("md.desc")} />
       <MasterTable
         key={ent.key}
         entityKey={ent.key}

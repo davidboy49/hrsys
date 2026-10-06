@@ -1,10 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { useTheme } from "next-themes"
-import { Clock, Database, LayoutDashboard, LogOut, Menu, Moon, Pin, PinOff, Settings, Sun, Users } from "lucide-react"
+import { ChevronDown, Clock, Database, LayoutDashboard, LogOut, Menu, Moon, Pin, PinOff, Settings, Sun, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
@@ -16,14 +16,50 @@ import { NotificationsBell } from "@/components/notifications-bell"
 
 type U = { name: string; email: string; role: string }
 
-const NAV = [
+type Child = { href: string; label: string; min: number; tab?: string }
+type Item = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; min: number; children?: Child[] }
+type NavEntry = Item | { group: string }
+
+// Sections that used to be tabs inside a page are now sub-items of their group.
+const NAV: NavEntry[] = [
   { href: "/", label: "nav.dashboard", icon: LayoutDashboard, min: 0 },
   { href: "/employees", label: "nav.employees", icon: Users, min: 1 },
-  { href: "/attendance", label: "nav.attendance", icon: Clock, min: 1 },
+  {
+    href: "/attendance",
+    label: "nav.attendance",
+    icon: Clock,
+    min: 1,
+    children: [
+      { href: "/attendance", label: "att.tab.punches", min: 1, tab: "punches" },
+      { href: "/attendance?tab=daily", label: "att.tab.daily", min: 1, tab: "daily" },
+      { href: "/attendance?tab=devices", label: "att.tab.devices", min: 1, tab: "devices" },
+      { href: "/attendance/qr", label: "att.qr", min: 2 },
+    ],
+  },
   { group: "nav.admin" },
-  { href: "/masterdata", label: "nav.masterdata", icon: Database, min: 2 },
-  { href: "/settings", label: "nav.settings", icon: Settings, min: 2 },
-] as const
+  {
+    href: "/masterdata",
+    label: "nav.masterdata",
+    icon: Database,
+    min: 2,
+    children: ["departments", "designations", "contract-types", "statuses", "locations", "shifts", "holidays"].map((k) => ({ href: `/masterdata/${k}`, label: `md.${k}`, min: 2 })),
+  },
+  {
+    href: "/settings",
+    label: "nav.settings",
+    icon: Settings,
+    min: 2,
+    children: [
+      { href: "/settings?tab=company", label: "set.tab.company", min: 2, tab: "company" },
+      { href: "/settings?tab=users", label: "set.tab.users", min: 3, tab: "users" },
+      { href: "/settings?tab=attendance", label: "set.tab.attendance", min: 2, tab: "attendance" },
+      { href: "/settings?tab=numbering", label: "set.tab.numbering", min: 2, tab: "numbering" },
+      { href: "/settings?tab=templates", label: "set.tab.templates", min: 2, tab: "templates" },
+      { href: "/settings?tab=audit", label: "set.tab.audit", min: 3, tab: "audit" },
+      { href: "/settings?tab=account", label: "set.tab.account", min: 2, tab: "account" },
+    ],
+  },
+]
 
 const RANK: Record<string, number> = { EMPLOYEE: 0, MANAGER: 1, HR: 2, ADMIN: 3 }
 const PIN_COOKIE = "pd_sidebar"
@@ -49,35 +85,88 @@ function Brand({ company, compact }: { company: string; compact?: boolean }) {
 function Nav({ role, onNavigate, compact }: { role: string; onNavigate?: () => void; compact?: boolean }) {
   const t = useT()
   const path = usePathname()
+  const params = useSearchParams()
   const rank = RANK[role] ?? 0
+  const tabParam = params.get("tab")
+
+  // a child is current when its page matches and, for tabbed pages, its tab does
+  const childActive = (parent: Item, c: Child) => {
+    if (c.tab) {
+      const base = c.href.split("?")[0]
+      if (path !== base) return false
+      const first = parent.children![0].tab
+      return (tabParam ?? first) === c.tab
+    }
+    return path === c.href
+  }
+  const itemActive = (n: Item) => (n.children ? path.startsWith(n.href) : n.href === "/" ? path === "/" : path.startsWith(n.href))
+
+  // groups the person has opened or closed by hand; otherwise the group with the current page is open
+  const [manual, setManual] = useState<Record<string, boolean>>({})
+
   const items = NAV.filter((n) => !("min" in n) || rank >= n.min)
   return (
     <nav className="flex flex-col gap-0.5 text-sm">
-      {items.map((n, i) =>
-        "group" in n ? (
-          compact ? (
+      {items.map((n, i) => {
+        if (!("min" in n)) {
+          return compact ? (
             <span key={i} className="mx-2 my-2 border-t" />
           ) : (
             <p key={i} className="px-2 pt-4 pb-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               {t(n.group)}
             </p>
           )
-        ) : (
-          <Link
-            key={n.href}
-            href={n.href}
-            onClick={onNavigate}
-            title={compact ? t(n.label) : undefined}
-            className={cn(
-              "flex items-center gap-2.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-muted hover:text-foreground",
-              (n.href === "/" ? path === "/" : path.startsWith(n.href)) && "bg-sidebar-accent font-medium text-sidebar-accent-foreground hover:bg-sidebar-accent",
+        }
+        const kids = n.children?.filter((c) => rank >= c.min)
+        const active = itemActive(n)
+        const base = "flex items-center gap-2.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+        const activeCls = "bg-sidebar-accent font-medium text-sidebar-accent-foreground hover:bg-sidebar-accent"
+
+        // plain link, or a group shown as a single icon in the narrow rail
+        if (!kids || kids.length === 0 || compact) {
+          return (
+            <Link key={n.href} href={kids?.[0]?.href ?? n.href} onClick={onNavigate} title={compact ? t(n.label) : undefined} className={cn(base, active && activeCls)}>
+              <n.icon className="size-4 shrink-0" />
+              {!compact && t(n.label)}
+            </Link>
+          )
+        }
+
+        const open = manual[n.href] ?? active
+        return (
+          <div key={n.href}>
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={() => setManual((m) => ({ ...m, [n.href]: !open }))}
+              className={cn(base, "w-full", active && !open && activeCls)}
+            >
+              <n.icon className="size-4 shrink-0" />
+              <span className="flex-1 text-left">{t(n.label)}</span>
+              <ChevronDown className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-180")} />
+            </button>
+            {open && (
+              <ul className="ml-[1.1rem] mt-0.5 space-y-0.5 border-l pl-2">
+                {kids.map((c) => (
+                  <li key={c.href}>
+                    <Link
+                      href={c.href}
+                      onClick={onNavigate}
+                      aria-current={childActive(n, c) ? "page" : undefined}
+                      className={cn(
+                        "block truncate rounded-md px-2.5 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground",
+                        childActive(n, c) && "bg-sidebar-accent font-medium text-sidebar-accent-foreground hover:bg-sidebar-accent",
+                      )}
+                    >
+                      {t(c.label)}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             )}
-          >
-            <n.icon className="size-4 shrink-0" />
-            {!compact && t(n.label)}
-          </Link>
-        ),
-      )}
+          </div>
+        )
+      })}
     </nav>
   )
 }

@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { Download } from "lucide-react"
 import { db } from "@/lib/db"
 import { requireRole } from "@/lib/session"
@@ -6,7 +5,6 @@ import { fmtDateTime } from "@/lib/format"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { cn } from "@/lib/utils"
 import { PasswordForm, SettingsForm, UsersPanel } from "./forms"
 import { getT, titleOf } from "@/i18n/server"
 
@@ -35,14 +33,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageHeader title={t("nav.settings")} />
-      <nav className="mb-6 flex gap-1 overflow-x-auto border-b">
-        {tabs.map((x) => (
-          <Link key={x.id} href={`/settings?tab=${x.id}`} className={cn("-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm", tab === x.id ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground")}>
-            {t(x.label)}
-          </Link>
-        ))}
-      </nav>
+      <PageHeader title={t(`set.tab.${tab}`)} />
 
       {tab === "company" && (
         <SettingsForm
