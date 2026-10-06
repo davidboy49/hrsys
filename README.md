@@ -15,23 +15,26 @@ npm run dev             # http://localhost:3000
 
 Sign in with `admin@company.com` / `ChangeMe123!` and change the password under Settings > My account.
 
-## Deploy to Vercel with a Neon database
+## Deploy to Vercel with Neon (database + photo bucket)
 
-1. **Database.** Click *Add* on **Prisma Postgres** on the import screen (or *Storage* > *Create Database* > **Neon**).
-   Either one adds `DATABASE_URL` to the project. If `DATABASE_URL_UNPOOLED` also exists (Neon) it is used for migrations.
-2. **Photo storage.** *Storage* > *Create* > **Blob**, connect it. This adds `BLOB_READ_WRITE_TOKEN`.
-   (Vercel has no writable disk, so photos must go to Blob.)
-3. **Secret.** Add an environment variable `AUTH_SECRET` with the output of `openssl rand -base64 32`.
-4. **Deploy.** Push this repo to GitHub, import it in Vercel. The `vercel-build` script runs
-   `prisma migrate deploy` before `next build`, so tables are created on the first deploy.
-5. **First admin and masterdata.** From your computer, once:
-   ```bash
-   # PowerShell
+1. **Database.** In Vercel: *Storage* > *Create Database* > **Neon**, connect it to the project.
+   That adds `DATABASE_URL` (and `DATABASE_URL_UNPOOLED`, used for migrations).
+2. **Photo bucket.** Photos go to a private Neon Object Storage bucket named `uploads` (declared in `neon.ts`).
+   From this folder run `neon link --project-id <id> --branch production -y` then `neon deploy`.
+   It writes `AWS_ENDPOINT_URL_S3`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` into `.env.local`.
+   Copy those four into *Vercel > Settings > Environment Variables*.
+   (Without them the app still works; only photo upload shows an error.)
+3. **Secret.** Add `AUTH_SECRET` (output of `openssl rand -base64 32`).
+4. **Deploy.** The `vercel-build` script runs `prisma migrate deploy` before `next build`, creating the tables.
+5. **First admin.** From your computer, once:
+   ```powershell
    $env:DATABASE_URL="<DATABASE_URL from Vercel>"
    $env:SEED_SAMPLE="0"; $env:SEED_ADMIN_EMAIL="you@company.com"; $env:SEED_ADMIN_PASSWORD="a-strong-password"
    npm run db:seed
    ```
    `SEED_SAMPLE=0` skips the 40 demo employees.
+
+Photos are private: the app serves them through `/api/photo`, which requires sign-in.
 
 ## Roles
 
