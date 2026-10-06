@@ -13,6 +13,7 @@ export async function proxy(req: NextRequest) {
   }
   if (!ok && pathname !== "/login") {
     const url = new URL("/login", req.url)
+    if (pathname !== "/") url.searchParams.set("next", pathname + req.nextUrl.search)
     return NextResponse.redirect(url)
   }
   if (ok && pathname === "/login") return NextResponse.redirect(new URL("/", req.url))

@@ -6,4 +6,4 @@ export interface DeviceAdapter {
   fetchPunches(since: Date | null): Promise<RawPunch[]>
 }
 
-export type DeviceRow = { id: string; name: string; ip: string | null; port: number; mode: "MOCK" | "PULL" | "PUSH"; locationId: string | null }
+export type DeviceRow = { id: string; name: string; ip: string | null; port: number; mode: "MOCK" | "PULL" | "PUSH" | "QR"; locationId: string | null }

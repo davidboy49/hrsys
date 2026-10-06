@@ -56,8 +56,12 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       {tab === "users" && isAdmin && (
         <UsersPanel
           meId={user.id}
-          users={(await db.user.findMany({ orderBy: { createdAt: "asc" } })).map((u) => ({
+          employees={(await db.employee.findMany({ where: { deletedAt: null }, orderBy: { employeeNo: "asc" }, select: { id: true, employeeNo: true, nameEn: true, email: true } })).map((e) => ({
+            id: e.id, label: `${e.employeeNo} · ${e.nameEn}`, name: e.nameEn, email: e.email ?? "",
+          }))}
+          users={(await db.user.findMany({ orderBy: { createdAt: "asc" }, include: { employee: { select: { employeeNo: true, nameEn: true } } } })).map((u) => ({
             id: u.id, name: u.name, email: u.email, role: u.role, isActive: u.isActive, lastLogin: u.lastLoginAt ? fmtDateTime(u.lastLoginAt) : "Never",
+            employeeId: u.employeeId, employeeLabel: u.employee ? `${u.employee.employeeNo} · ${u.employee.nameEn}` : null,
           }))}
         />
       )}

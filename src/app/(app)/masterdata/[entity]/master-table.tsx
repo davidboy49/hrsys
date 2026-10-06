@@ -172,8 +172,10 @@ export function MasterTable({
                         <Input
                           id={id}
                           name={f.name}
-                          defaultValue={(v as string) ?? (f.type === "number" ? "10" : "")}
+                          defaultValue={(v as string) ?? (f.name === "radiusM" ? "150" : f.type === "number" ? "10" : "")}
                           type={f.type === "date" ? "date" : f.type === "time" ? "time" : f.type === "number" ? "number" : "text"}
+                          inputMode={f.type === "decimal" ? "decimal" : undefined}
+                          placeholder={f.type === "decimal" ? "e.g. 11.5564" : undefined}
                           required={f.required}
                           className={f.name === "code" ? "font-mono uppercase" : ""}
                         />

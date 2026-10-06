@@ -1,7 +1,7 @@
 export type FieldDef = {
   name: string
   label: string
-  type: "text" | "bool" | "date" | "time" | "number" | "select" | "relation"
+  type: "text" | "bool" | "date" | "time" | "number" | "decimal" | "select" | "relation"
   required?: boolean
   options?: { value: string; label: string }[]
   /** for relation fields: which entity supplies the options */
@@ -69,6 +69,9 @@ export const ENTITIES: EntityDef[] = [
       { name: "code", label: "Code", type: "text", required: true, column: true },
       { name: "name", label: "Name", type: "text", required: true, column: true },
       { name: "address", label: "Address", type: "text", column: true },
+      { name: "latitude", label: "Latitude (for QR distance check)", type: "decimal" },
+      { name: "longitude", label: "Longitude (for QR distance check)", type: "decimal" },
+      { name: "radiusM", label: "Allowed distance (metres)", type: "number", required: true },
     ],
   },
   {

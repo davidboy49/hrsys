@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { atLeast, requireUser } from "@/lib/session"
 import { fmtDate, localDateKey } from "@/lib/format"
@@ -22,9 +23,7 @@ function Stat({ label, value, sub, href }: { label: string; value: number | stri
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
   const user = await requireUser()
   const sp = await searchParams
-  if (!atLeast(user.role, "MANAGER")) {
-    return <PageHeader title={`Welcome, ${user.name}`} description="Your account does not have access to HR data yet. Ask an admin to change your role." />
-  }
+  if (!atLeast(user.role, "MANAGER")) redirect("/scan")
   const canEdit = atLeast(user.role, "HR")
   const now = new Date()
   const in60 = new Date(now.getTime() + 60 * 864e5)

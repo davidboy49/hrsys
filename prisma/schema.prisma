@@ -30,6 +30,7 @@ enum DeviceMode {
   MOCK
   PULL
   PUSH
+  QR
 }
 
 enum DeviceStatus {
@@ -59,6 +60,8 @@ model User {
   failedLogins Int       @default(0)
   lockedUntil  DateTime?
   lastLoginAt  DateTime?
+  employeeId   String?   @unique
+  employee     Employee? @relation(fields: [employeeId], references: [id])
   createdAt    DateTime  @default(now())
   auditLogs    AuditLog[]
 }
@@ -110,6 +113,9 @@ model Location {
   code      String     @unique
   name      String
   address   String?
+  latitude  Float?
+  longitude Float?
+  radiusM   Int        @default(150)
   isActive  Boolean    @default(true)
   devices   Device[]
   employees Employee[]
@@ -168,6 +174,7 @@ model Employee {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   rateHistory    RateHistory[]
+  user           User?
   punches        AttendancePunch[]
   daily          AttendanceDaily[]
 

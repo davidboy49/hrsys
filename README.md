@@ -59,3 +59,10 @@ Photos are private: the app serves them through `/api/photo`, which requires sig
 - Import is all-or-nothing: every row is validated first, nothing is saved if any row fails. Limit 4 MB.
 - Time zone is fixed to Asia/Phnom_Penh (`src/lib/format.ts`).
 - Next.js 16 uses `src/proxy.ts` (formerly middleware) to require sign-in.
+
+## QR attendance (no hardware needed)
+
+1. Add a location in Masterdata (optionally its latitude, longitude and allowed distance for a "must be near the office" check).
+2. Create a login for each employee in Settings > Users and roles, linking it to the employee (role Employee).
+3. Open Attendance > QR attendance on a tablet or screen at the entrance. The QR rotates every 15 seconds.
+4. Employees scan it with their phone camera, sign in once, and tap Confirm. The punch appears in Attendance > Punches like any device punch.

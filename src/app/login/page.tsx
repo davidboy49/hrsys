@@ -4,7 +4,8 @@ import { LoginArt } from "./login-art"
 
 export const metadata = { title: "Sign in" }
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const { next } = await searchParams
   return (
     <main className="grid min-h-svh lg:grid-cols-2">
       <LoginArt />
@@ -20,7 +21,7 @@ export default function LoginPage() {
             <h2 className="text-2xl font-semibold tracking-tight">Sign in</h2>
             <p className="text-sm text-muted-foreground">Use the account your HR admin created for you.</p>
           </div>
-          <LoginForm />
+          <LoginForm next={typeof next === "string" ? next : ""} />
         </div>
       </section>
     </main>

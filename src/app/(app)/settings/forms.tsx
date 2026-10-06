@@ -52,9 +52,12 @@ export function SettingsForm({ values, fields, disabled }: { values: Record<stri
   )
 }
 
-type U = { id: string; name: string; email: string; role: string; isActive: boolean; lastLogin: string }
+type U = { id: string; name: string; email: string; role: string; isActive: boolean; lastLogin: string; employeeId: string | null; employeeLabel: string | null }
+type Emp = { id: string; label: string; name: string; email: string }
+type RoleKey = "ADMIN" | "HR" | "MANAGER" | "EMPLOYEE"
 
-export function UsersPanel({ users, meId }: { users: U[]; meId: string }) {
+export function UsersPanel({ users, meId, employees }: { users: U[]; meId: string; employees: Emp[] }) {
+  const linked = new Set(users.map((u) => u.employeeId).filter(Boolean))
   const [open, setOpen] = useState(false)
   const [reset, setReset] = useState<U | null>(null)
   const [editing, setEditing] = useState<U | null>(null)
@@ -70,7 +73,7 @@ export function UsersPanel({ users, meId }: { users: U[]; meId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex justify-between">
-        <p className="text-sm text-muted-foreground">Admin: everything. HR: employees, rate, masterdata, attendance. Manager: read only, no rate.</p>
+        <p className="text-sm text-muted-foreground">Admin: everything. HR: employees, rate, masterdata, attendance. Manager: read only, no rate. Employee: phone check-in by QR only (link a login to an employee record).</p>
         <Button onClick={() => { setErr(null); setOpen(true) }}>
           <Plus /> Add user
         </Button>
@@ -81,6 +84,7 @@ export function UsersPanel({ users, meId }: { users: U[]; meId: string }) {
             <TableRow>
               <TableHead>User</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Employee</TableHead>
               <TableHead>Last login</TableHead>
               <TableHead>Status</TableHead>
               <TableHead />
@@ -97,15 +101,17 @@ export function UsersPanel({ users, meId }: { users: U[]; meId: string }) {
                   <NativeSelect
                     value={u.role}
                     disabled={u.id === meId || pending}
-                    onChange={(e) => run(() => updateUser(u.id, { role: e.target.value as "ADMIN" | "HR" | "MANAGER" }), "Role updated")}
+                    onChange={(e) => run(() => updateUser(u.id, { role: e.target.value as RoleKey }), "Role updated")}
                     className="h-7 w-28"
                     aria-label={`Role for ${u.name}`}
                   >
                     <option value="ADMIN">Admin</option>
                     <option value="HR">HR</option>
                     <option value="MANAGER">Manager</option>
+                    <option value="EMPLOYEE">Employee</option>
                   </NativeSelect>
                 </TableCell>
+                <TableCell className="text-muted-foreground">{u.employeeLabel ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{u.lastLogin}</TableCell>
                 <TableCell>
                   <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${u.isActive ? "bg-green-500/15 text-green-700 dark:text-green-300" : "bg-muted text-muted-foreground"}`}>
@@ -150,6 +156,29 @@ export function UsersPanel({ users, meId }: { users: U[]; meId: string }) {
               })
             }
           >
+            <div className="space-y-1.5">
+              <Label htmlFor="u-emp">Link to employee (optional)</Label>
+              <NativeSelect
+                id="u-emp"
+                name="employeeId"
+                defaultValue=""
+                onChange={(e) => {
+                  const emp = employees.find((x) => x.id === e.target.value)
+                  if (!emp) return
+                  const n = document.getElementById("u-name") as HTMLInputElement | null
+                  const m = document.getElementById("u-email") as HTMLInputElement | null
+                  if (n && !n.value) n.value = emp.name
+                  if (m && !m.value) m.value = emp.email
+                  const r = document.getElementById("u-role") as HTMLSelectElement | null
+                  if (r && r.value === "HR") r.value = "EMPLOYEE"
+                }}
+              >
+                <option value="">Not linked</option>
+                {employees.filter((x) => !linked.has(x.id)).map((x) => (
+                  <option key={x.id} value={x.id}>{x.label}</option>
+                ))}
+              </NativeSelect>
+            </div>
             <div className="space-y-1.5"><Label htmlFor="u-name">Name</Label><Input id="u-name" name="name" required /></div>
             <div className="space-y-1.5"><Label htmlFor="u-email">Email</Label><Input id="u-email" name="email" type="email" required /></div>
             <div className="space-y-1.5">
@@ -158,6 +187,7 @@ export function UsersPanel({ users, meId }: { users: U[]; meId: string }) {
                 <option value="ADMIN">Admin</option>
                 <option value="HR">HR</option>
                 <option value="MANAGER">Manager</option>
+                <option value="EMPLOYEE">Employee (QR check-in only)</option>
               </NativeSelect>
             </div>
             <div className="space-y-1.5"><Label htmlFor="u-pw">Password</Label><Input id="u-pw" name="password" type="text" minLength={8} required /></div>
@@ -180,7 +210,7 @@ export function UsersPanel({ users, meId }: { users: U[]; meId: string }) {
             className="space-y-3"
             action={(fd) =>
               start(async () => {
-                const r = await updateUser(editing!.id, { name: String(fd.get("name") ?? ""), email: String(fd.get("email") ?? "") })
+                const r = await updateUser(editing!.id, { name: String(fd.get("name") ?? ""), email: String(fd.get("email") ?? ""), employeeId: String(fd.get("employeeId") ?? "") || null })
                 if (r.error) setErr(r.error)
                 else {
                   setEditing(null)
@@ -191,6 +221,15 @@ export function UsersPanel({ users, meId }: { users: U[]; meId: string }) {
           >
             <div className="space-y-1.5"><Label htmlFor="e-name">Name</Label><Input id="e-name" name="name" defaultValue={editing?.name} required /></div>
             <div className="space-y-1.5"><Label htmlFor="e-email">Email (used to sign in)</Label><Input id="e-email" name="email" type="email" defaultValue={editing?.email} required /></div>
+            <div className="space-y-1.5">
+              <Label htmlFor="e-emp">Linked employee</Label>
+              <NativeSelect id="e-emp" name="employeeId" defaultValue={editing?.employeeId ?? ""}>
+                <option value="">Not linked</option>
+                {employees.filter((x) => !linked.has(x.id) || x.id === editing?.employeeId).map((x) => (
+                  <option key={x.id} value={x.id}>{x.label}</option>
+                ))}
+              </NativeSelect>
+            </div>
             <p className="text-xs text-muted-foreground">Change the role in the table. Use Reset password to set a new password.</p>
             {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
             <DialogFooter>

@@ -17,7 +17,7 @@ export type DeviceView = {
   ip: string | null
   port: number
   serialNo: string | null
-  mode: "MOCK" | "PULL" | "PUSH"
+  mode: "MOCK" | "PULL" | "PUSH" | "QR"
   status: "ONLINE" | "OFFLINE"
   locationId: string | null
   lastSync: string
@@ -25,7 +25,7 @@ export type DeviceView = {
   users: number
 }
 
-const MODE_LABEL = { MOCK: "Mock", PULL: "Pull (TCP)", PUSH: "Push (ADMS)" }
+const MODE_LABEL = { MOCK: "Mock", PULL: "Pull (TCP)", PUSH: "Push (ADMS)", QR: "Phone QR" }
 
 export function SyncAllButton() {
   const [pending, start] = useTransition()
@@ -98,7 +98,7 @@ export function DeviceCards({ devices, locations, canEdit, isAdmin }: { devices:
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={busy === d.id || d.mode === "PUSH"}
+                  disabled={busy === d.id || d.mode === "PUSH" || d.mode === "QR"}
                   onClick={() =>
                     run(d.id, async () => {
                       const r = await syncOne(d.id)

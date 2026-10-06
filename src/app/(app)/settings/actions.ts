@@ -31,7 +31,8 @@ const pw = z.string().min(8, "Password must be at least 8 characters")
 const newUser = z.object({
   name: z.string().trim().min(1, "Name is required"),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
-  role: z.enum(["ADMIN", "HR", "MANAGER"]),
+  role: z.enum(["ADMIN", "HR", "MANAGER", "EMPLOYEE"]),
+  employeeId: z.string().optional(),
   password: pw,
 })
 
@@ -40,13 +41,15 @@ export async function createUser(form: FormData): Promise<R> {
   const p = newUser.safeParse(Object.fromEntries(form.entries()))
   if (!p.success) return { error: p.error.issues[0].message }
   if (await db.user.findUnique({ where: { email: p.data.email } })) return { error: "A user with this email already exists" }
-  const u = await db.user.create({ data: { name: p.data.name, email: p.data.email, role: p.data.role, passwordHash: await bcrypt.hash(p.data.password, 10) } })
+  const employeeId = p.data.employeeId || null
+  if (employeeId && (await db.user.findUnique({ where: { employeeId } }))) return { error: "That employee already has a login" }
+  const u = await db.user.create({ data: { name: p.data.name, email: p.data.email, role: p.data.role, employeeId, passwordHash: await bcrypt.hash(p.data.password, 10) } })
   await audit(admin.id, "create", "User", u.id, u.email)
   revalidatePath("/settings")
   return { ok: true }
 }
 
-export async function updateUser(id: string, patch: { name?: string; email?: string; role?: "ADMIN" | "HR" | "MANAGER"; isActive?: boolean; password?: string }): Promise<R> {
+export async function updateUser(id: string, patch: { name?: string; email?: string; role?: "ADMIN" | "HR" | "MANAGER" | "EMPLOYEE"; employeeId?: string | null; isActive?: boolean; password?: string }): Promise<R> {
   const admin = await assertRole("ADMIN")
   if (id === admin.id && (patch.isActive === false || (patch.role && patch.role !== "ADMIN"))) return { error: "You cannot demote or deactivate your own account" }
   const data: Record<string, unknown> = {}
@@ -63,6 +66,11 @@ export async function updateUser(id: string, patch: { name?: string; email?: str
     data.email = email
   }
   if (patch.role) data.role = patch.role
+  if (patch.employeeId !== undefined) {
+    const eid = patch.employeeId || null
+    if (eid && (await db.user.findFirst({ where: { employeeId: eid, NOT: { id } } }))) return { error: "That employee already has a login" }
+    data.employeeId = eid
+  }
   if (patch.isActive !== undefined) data.isActive = patch.isActive
   if (patch.password !== undefined) {
     const p = pw.safeParse(patch.password)

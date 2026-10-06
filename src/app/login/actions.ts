@@ -15,6 +15,9 @@ export async function login(_: LoginState, form: FormData): Promise<LoginState> 
   const email = String(form.get("email") ?? "").trim().toLowerCase()
   const password = String(form.get("password") ?? "")
   const remember = form.get("remember") === "on"
+  const nextRaw = String(form.get("next") ?? "")
+  // only same-site paths, never an absolute or protocol-relative URL
+  const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") && !nextRaw.startsWith("/login") ? nextRaw : null
   if (!email || !password) return { error: "Enter your email and password." }
 
   const user = await db.user.findUnique({ where: { email } })
@@ -41,7 +44,7 @@ export async function login(_: LoginState, form: FormData): Promise<LoginState> 
   await db.user.update({ where: { id: user.id }, data: { failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() } })
   await createSession({ id: user.id, email: user.email, name: user.name, role: user.role }, remember)
   await audit(user.id, "login", "User", user.id)
-  redirect("/employees")
+  redirect(next ?? (user.role === "EMPLOYEE" ? "/scan" : "/employees"))
 }
 
 export async function logout() {

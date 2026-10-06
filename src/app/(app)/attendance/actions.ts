@@ -17,7 +17,7 @@ export async function syncOne(id: string) {
 
 export async function syncAll() {
   const user = await assertRole("HR")
-  const devices = await db.device.findMany({ where: { isActive: true, mode: { not: "PUSH" } } })
+  const devices = await db.device.findMany({ where: { isActive: true, mode: { notIn: ["PUSH", "QR"] } } })
   let inserted = 0
   let failed = 0
   for (const d of devices) {

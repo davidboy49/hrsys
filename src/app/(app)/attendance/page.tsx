@@ -1,4 +1,6 @@
 import Link from "next/link"
+import { QrCode } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { db } from "@/lib/db"
 import { atLeast, requireRole } from "@/lib/session"
 import { fmtDate, fmtDateTime, fmtTime, fromLocal, localDateKey } from "@/lib/format"
@@ -49,7 +51,16 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
       <PageHeader
         title="Attendance"
         description="ZKTeco devices run in mock mode until a real device is connected."
-        actions={canEdit && tab !== "daily" ? <SyncAllButton /> : undefined}
+        actions={
+          canEdit ? (
+            <>
+              <Button variant="outline" render={<Link href="/attendance/qr" />}>
+                <QrCode /> QR attendance
+              </Button>
+              {tab !== "daily" && <SyncAllButton />}
+            </>
+          ) : undefined
+        }
       />
       <nav className="mb-5 flex gap-1 border-b">
         {tabs.map((t) => (

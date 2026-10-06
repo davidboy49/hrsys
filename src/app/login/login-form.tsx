@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { login } from "./actions"
 
-export function LoginForm() {
+export function LoginForm({ next = "" }: { next?: string }) {
   const [state, action, pending] = useActionState(login, {})
   const [show, setShow] = useState(false)
   return (
     <form action={action} className="space-y-4">
+      <input type="hidden" name="next" value={next} />
       <div className="space-y-1.5">
         <Label htmlFor="email">Email</Label>
         <Input id="email" name="email" type="email" autoComplete="username" placeholder="name@company.com" required autoFocus />

@@ -17,6 +17,8 @@ function coerce(f: FieldDef, raw: FormDataEntryValue | null) {
       return raw === "on" || s === "true"
     case "number":
       return s === "" ? 0 : Number(s)
+    case "decimal":
+      return s === "" || Number.isNaN(Number(s)) ? null : Number(s)
     case "date":
       return s ? new Date(s + "T00:00:00.000Z") : null
     case "relation":
