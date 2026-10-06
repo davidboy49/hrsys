@@ -17,8 +17,8 @@ Sign in with `admin@company.com` / `ChangeMe123!` and change the password under 
 
 ## Deploy to Vercel with a Neon database
 
-1. **Database.** In the Vercel dashboard open your project, go to *Storage* > *Create Database* > **Neon** (free tier).
-   Connect it to the project. Vercel adds `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` automatically.
+1. **Database.** Click *Add* on **Prisma Postgres** on the import screen (or *Storage* > *Create Database* > **Neon**).
+   Either one adds `DATABASE_URL` to the project. If `DATABASE_URL_UNPOOLED` also exists (Neon) it is used for migrations.
 2. **Photo storage.** *Storage* > *Create* > **Blob**, connect it. This adds `BLOB_READ_WRITE_TOKEN`.
    (Vercel has no writable disk, so photos must go to Blob.)
 3. **Secret.** Add an environment variable `AUTH_SECRET` with the output of `openssl rand -base64 32`.
@@ -27,7 +27,7 @@ Sign in with `admin@company.com` / `ChangeMe123!` and change the password under 
 5. **First admin and masterdata.** From your computer, once:
    ```bash
    # PowerShell
-   $env:DATABASE_URL="<Neon unpooled URL>"; $env:DATABASE_URL_UNPOOLED=$env:DATABASE_URL
+   $env:DATABASE_URL="<DATABASE_URL from Vercel>"
    $env:SEED_SAMPLE="0"; $env:SEED_ADMIN_EMAIL="you@company.com"; $env:SEED_ADMIN_PASSWORD="a-strong-password"
    npm run db:seed
    ```
