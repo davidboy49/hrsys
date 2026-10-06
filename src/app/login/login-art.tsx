@@ -27,7 +27,7 @@ export async function LoginArt() {
         </div>
       </div>
 
-      <div className="art-pos art-rise" style={{ left: "10%", top: "47%", ...rise(1000) }} aria-hidden>
+      <div className="art-pos art-rise" style={{ left: "12%", top: "24%", ...rise(1000) }} aria-hidden>
         <div className="art-card" style={{ animationDuration: "8s", animationDelay: "-2s" }}>
           <span className="relative grid size-9 place-items-center rounded-lg bg-white/20">
             <Clock className="size-4" />
