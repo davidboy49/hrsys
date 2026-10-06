@@ -171,7 +171,7 @@ function Nav({ role, onNavigate, compact }: { role: string; onNavigate?: () => v
   )
 }
 
-export function AppShell({ user, company, initialPinned, children }: { user: U; company: string; initialPinned: boolean; children: React.ReactNode }) {
+export function AppShell({ user, company, initialPinned, notice, children }: { user: U; company: string; initialPinned: boolean; notice?: React.ReactNode; children: React.ReactNode }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const [pinned, setPinned] = useState(initialPinned)
@@ -263,6 +263,7 @@ export function AppShell({ user, company, initialPinned, children }: { user: U; 
             </Button>
           </form>
         </header>
+        {notice}
         <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
       </div>
     </div>
