@@ -46,10 +46,22 @@ export async function createUser(form: FormData): Promise<R> {
   return { ok: true }
 }
 
-export async function updateUser(id: string, patch: { role?: "ADMIN" | "HR" | "MANAGER"; isActive?: boolean; password?: string }): Promise<R> {
+export async function updateUser(id: string, patch: { name?: string; email?: string; role?: "ADMIN" | "HR" | "MANAGER"; isActive?: boolean; password?: string }): Promise<R> {
   const admin = await assertRole("ADMIN")
   if (id === admin.id && (patch.isActive === false || (patch.role && patch.role !== "ADMIN"))) return { error: "You cannot demote or deactivate your own account" }
   const data: Record<string, unknown> = {}
+  if (patch.name !== undefined) {
+    const name = patch.name.trim()
+    if (!name) return { error: "Name is required" }
+    data.name = name
+  }
+  if (patch.email !== undefined) {
+    const email = patch.email.trim().toLowerCase()
+    if (!z.string().email().safeParse(email).success) return { error: "Enter a valid email" }
+    const dup = await db.user.findFirst({ where: { email, NOT: { id } } })
+    if (dup) return { error: "A user with this email already exists" }
+    data.email = email
+  }
   if (patch.role) data.role = patch.role
   if (patch.isActive !== undefined) data.isActive = patch.isActive
   if (patch.password !== undefined) {

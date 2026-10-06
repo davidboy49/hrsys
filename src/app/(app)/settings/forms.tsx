@@ -57,6 +57,7 @@ type U = { id: string; name: string; email: string; role: string; isActive: bool
 export function UsersPanel({ users, meId }: { users: U[]; meId: string }) {
   const [open, setOpen] = useState(false)
   const [reset, setReset] = useState<U | null>(null)
+  const [editing, setEditing] = useState<U | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [pending, start] = useTransition()
   const run = (fn: () => Promise<{ error?: string }>, ok: string) =>
@@ -113,6 +114,9 @@ export function UsersPanel({ users, meId }: { users: U[]; meId: string }) {
                   </span>
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-right">
+                  <Button size="sm" variant="ghost" onClick={() => { setErr(null); setEditing(u) }}>
+                    Edit
+                  </Button>
                   <Button size="sm" variant="ghost" onClick={() => { setErr(null); setReset(u) }}>
                     Reset password
                   </Button>
@@ -156,11 +160,42 @@ export function UsersPanel({ users, meId }: { users: U[]; meId: string }) {
                 <option value="MANAGER">Manager</option>
               </NativeSelect>
             </div>
-            <div className="space-y-1.5"><Label htmlFor="u-pw">Temporary password</Label><Input id="u-pw" name="password" type="text" minLength={8} required /></div>
+            <div className="space-y-1.5"><Label htmlFor="u-pw">Password</Label><Input id="u-pw" name="password" type="text" minLength={8} required /></div>
             {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={pending}>Create user</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit user</DialogTitle>
+          </DialogHeader>
+          <form
+            key={editing?.id}
+            className="space-y-3"
+            action={(fd) =>
+              start(async () => {
+                const r = await updateUser(editing!.id, { name: String(fd.get("name") ?? ""), email: String(fd.get("email") ?? "") })
+                if (r.error) setErr(r.error)
+                else {
+                  setEditing(null)
+                  toast.success("User updated")
+                }
+              })
+            }
+          >
+            <div className="space-y-1.5"><Label htmlFor="e-name">Name</Label><Input id="e-name" name="name" defaultValue={editing?.name} required /></div>
+            <div className="space-y-1.5"><Label htmlFor="e-email">Email (used to sign in)</Label><Input id="e-email" name="email" type="email" defaultValue={editing?.email} required /></div>
+            <p className="text-xs text-muted-foreground">Change the role in the table. Use Reset password to set a new password.</p>
+            {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+              <Button type="submit" disabled={pending}>Save</Button>
             </DialogFooter>
           </form>
         </DialogContent>
