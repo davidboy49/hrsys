@@ -6,11 +6,14 @@ import { PageHeader } from "@/components/page-header"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { DeviceCards, SyncAllButton, type DeviceView } from "./device-cards"
+import { PunchToolbar } from "./punch-toolbar"
+import { Pager } from "@/components/pager"
+import { buildPunchWhere, parsePunchFilters } from "@/lib/punches"
 
 export const metadata = { title: "Attendance" }
 export const dynamic = "force-dynamic"
 
-type SP = { tab?: string; date?: string; unknown?: string }
+type SP = Record<string, string | string[] | undefined>
 
 const pill = (tone: "ok" | "warn" | "bad" | "mute", text: string) => (
   <span
@@ -30,15 +33,15 @@ const pill = (tone: "ok" | "warn" | "bad" | "mute", text: string) => (
 export default async function AttendancePage({ searchParams }: { searchParams: Promise<SP> }) {
   const user = await requireRole("MANAGER")
   const sp = await searchParams
-  const tab = sp.tab === "punches" || sp.tab === "daily" ? sp.tab : "devices"
+  const tab = sp.tab === "daily" || sp.tab === "devices" ? sp.tab : "punches"
   const canEdit = atLeast(user.role, "HR")
   const isAdmin = user.role === "ADMIN"
   const today = localDateKey(new Date())
 
   const tabs = [
-    { id: "devices", label: "Devices and sync" },
     { id: "punches", label: "Punches" },
     { id: "daily", label: "Daily records" },
+    { id: "devices", label: "Devices and sync" },
   ]
 
   return (
@@ -46,13 +49,13 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
       <PageHeader
         title="Attendance"
         description="ZKTeco devices run in mock mode until a real device is connected."
-        actions={canEdit && tab === "devices" ? <SyncAllButton /> : undefined}
+        actions={canEdit && tab !== "daily" ? <SyncAllButton /> : undefined}
       />
       <nav className="mb-5 flex gap-1 border-b">
         {tabs.map((t) => (
           <Link
             key={t.id}
-            href={`/attendance?tab=${t.id}`}
+            href={t.id === "punches" ? "/attendance" : `/attendance?tab=${t.id}`}
             className={cn("-mb-px border-b-2 px-3 py-2 text-sm", tab === t.id ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground")}
           >
             {t.label}
@@ -61,8 +64,8 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
       </nav>
 
       {tab === "devices" && <Devices canEdit={canEdit} isAdmin={isAdmin} today={today} />}
-      {tab === "punches" && <Punches onlyUnknown={sp.unknown === "1"} />}
-      {tab === "daily" && <Daily date={sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : today} />}
+      {tab === "punches" && <Punches sp={sp} canExport={canEdit} />}
+      {tab === "daily" && <Daily date={typeof sp.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : today} />}
     </>
   )
 }
@@ -131,48 +134,77 @@ async function Devices({ canEdit, isAdmin, today }: { canEdit: boolean; isAdmin:
   )
 }
 
-async function Punches({ onlyUnknown }: { onlyUnknown: boolean }) {
+async function Punches({ sp, canExport }: { sp: SP; canExport: boolean }) {
+  const f = parsePunchFilters(sp)
+  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? ""
+  const size = [10, 25, 50, 100].includes(Number(one(sp.size))) ? Number(one(sp.size)) : 25
+  const where = buildPunchWhere(f)
+  const [total, devices, departments, unknownCount] = await Promise.all([
+    db.attendancePunch.count({ where }),
+    db.device.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    db.department.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    db.attendancePunch.count({ where: { employeeId: null } }),
+  ])
+  const pages = Math.max(1, Math.ceil(total / size))
+  const page = Math.min(Math.max(1, parseInt(one(sp.page), 10) || 1), pages)
   const rows = await db.attendancePunch.findMany({
-    where: onlyUnknown ? { employeeId: null } : {},
+    where,
     orderBy: { punchedAt: "desc" },
-    take: 60,
-    include: { device: true, employee: true },
+    skip: (page - 1) * size,
+    take: size,
+    include: { device: true, employee: { include: { department: true } } },
   })
   return (
     <div className="space-y-3">
-      <div className="flex gap-2 text-sm">
-        <Link href="/attendance?tab=punches" className={cn("rounded-md px-2.5 py-1", !onlyUnknown ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted")}>
-          All
-        </Link>
-        <Link href="/attendance?tab=punches&unknown=1" className={cn("rounded-md px-2.5 py-1", onlyUnknown ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted")}>
-          Unknown PIN only
-        </Link>
-      </div>
+      <PunchToolbar
+        devices={devices.map((d) => ({ value: d.id, label: d.name }))}
+        departments={departments.map((d) => ({ value: d.id, label: d.name }))}
+        canExport={canExport}
+      />
+      {unknownCount > 0 && f.match !== "unknown" && (
+        <p className="text-sm text-muted-foreground">
+          {unknownCount} punches have an unknown PIN.{" "}
+          <Link href="/attendance?match=unknown" className="text-primary hover:underline">
+            Show them
+          </Link>
+          . To fix one, set that PIN on the employee, then press Sync all now.
+        </p>
+      )}
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Time</TableHead>
-              <TableHead>PIN</TableHead>
-              <TableHead>Employee</TableHead>
-              <TableHead>Device</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Match</TableHead>
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">Time</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">PIN</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">Employee</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">Department</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">Device</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">Type</TableHead>
+              <TableHead className="font-mono text-[11px] uppercase tracking-wide">Match</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No punches to show.
+                <TableCell colSpan={7} className="h-28 text-center text-muted-foreground">
+                  No punches match. Change the filter, or press Sync all now.
                 </TableCell>
               </TableRow>
             )}
             {rows.map((p) => (
               <TableRow key={p.id}>
-                <TableCell className="tabular-nums">{fmtDateTime(p.punchedAt)}</TableCell>
+                <TableCell className="whitespace-nowrap tabular-nums">{fmtDateTime(p.punchedAt)}</TableCell>
                 <TableCell className="font-mono">{p.pin}</TableCell>
-                <TableCell>{p.employee ? <Link className="hover:underline" href={`/employees/${p.employee.id}`}>{p.employee.nameEn}</Link> : "—"}</TableCell>
+                <TableCell>
+                  {p.employee ? (
+                    <Link className="hover:underline" href={`/employees/${p.employee.id}`}>
+                      {p.employee.nameEn}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell>{p.employee?.department.name ?? "—"}</TableCell>
                 <TableCell>{p.device.name}</TableCell>
                 <TableCell>{p.type === "IN" ? "Check in" : "Check out"}</TableCell>
                 <TableCell>{p.employee ? pill("ok", "Matched") : pill("warn", "Unknown PIN")}</TableCell>
@@ -180,8 +212,8 @@ async function Punches({ onlyUnknown }: { onlyUnknown: boolean }) {
             ))}
           </TableBody>
         </Table>
+        <Pager total={total} page={page} size={size} />
       </div>
-      <p className="text-xs text-muted-foreground">Showing the latest 60 punches. To fix an unknown PIN, set it on the employee profile, then press Sync all now to link the old punches.</p>
     </div>
   )
 }

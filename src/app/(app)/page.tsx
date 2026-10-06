@@ -119,7 +119,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             <h2 className="text-sm font-semibold">Attendance needs attention</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {unknownPunches} punches came from PINs that are not assigned to an employee.{" "}
-              <Link href="/attendance?tab=punches&unknown=1" className="text-primary hover:underline">
+              <Link href="/attendance?match=unknown" className="text-primary hover:underline">
                 Review them
               </Link>
               .
