@@ -47,3 +47,5 @@ next-env.d.ts
 .dev.log
 .pgdev.log
 .neon
+.vercel-login.log
+.vercel
