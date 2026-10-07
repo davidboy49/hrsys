@@ -3,7 +3,7 @@ import { getT } from "@/i18n/server"
 
 const rise = (ms: number): React.CSSProperties => ({ animationDelay: `${ms}ms` })
 
-export async function LoginArt() {
+export async function LoginArt({ company, logoUrl }: { company: string; logoUrl: string | null }) {
   const t = await getT()
   return (
     <section className="art-panel hidden flex-col justify-between p-10 text-white lg:flex">
@@ -52,10 +52,15 @@ export async function LoginArt() {
       </div>
 
       <div className="art-rise flex items-center gap-2 font-semibold" style={rise(100)}>
-        <span className="grid size-8 place-items-center rounded-lg bg-white text-primary">
-          <Users className="size-4" />
-        </span>
-        PeopleDesk
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt="" className="size-10 rounded-xl bg-white object-contain p-1" />
+        ) : (
+          <span className="grid size-8 place-items-center rounded-lg bg-white text-primary">
+            <Users className="size-4" />
+          </span>
+        )}
+        {company}
       </div>
 
       <div className="space-y-3">

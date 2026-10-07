@@ -1,17 +1,22 @@
 import { cookies } from "next/headers"
-import { db } from "@/lib/db"
 import { requireUser } from "@/lib/session"
+import { getBranding } from "@/lib/branding"
 import { AppShell } from "@/components/app-shell"
 import { SubscriptionBanner } from "@/components/subscription-banner"
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
-  const [setting, jar] = await Promise.all([db.setting.findUnique({ where: { key: "company.name" } }), cookies()])
-  const company = setting?.value?.trim() || "PeopleDesk"
+  const [brand, jar] = await Promise.all([getBranding(), cookies()])
   // pinned unless the person has switched it off
   const initialPinned = jar.get("pd_sidebar")?.value !== "0"
   return (
-    <AppShell user={user} company={company} initialPinned={initialPinned} notice={user.role === "ADMIN" || user.role === "HR" ? <SubscriptionBanner /> : null}>
+    <AppShell
+      user={user}
+      company={brand.company}
+      logoUrl={brand.logoUrl}
+      initialPinned={initialPinned}
+      notice={user.role === "ADMIN" || user.role === "HR" ? <SubscriptionBanner /> : null}
+    >
       {children}
     </AppShell>
   )

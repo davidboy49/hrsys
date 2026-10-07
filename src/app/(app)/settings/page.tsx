@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { PasswordForm, SettingsForm, UsersPanel } from "./forms"
+import { LogoUploader } from "./logo-uploader"
+import { getBranding } from "@/lib/branding"
 import { getT, titleOf } from "@/i18n/server"
 
 export const generateMetadata = titleOf("nav.settings")
@@ -36,6 +38,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <PageHeader title={t(`set.tab.${tab}`)} />
 
       {tab === "company" && (
+        <div className="space-y-8">
+          <LogoUploader logoUrl={(await getBranding()).logoUrl} canEdit={isAdmin} />
         <SettingsForm
           values={settings}
           disabled={!isAdmin}
@@ -44,6 +48,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             { key: "company.currency", label: t("set.currency"), type: "currency", hint: t("set.currencyHint") },
           ]}
         />
+        </div>
       )}
 
       {tab === "users" && isAdmin && (

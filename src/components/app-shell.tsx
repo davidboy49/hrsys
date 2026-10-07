@@ -64,12 +64,18 @@ const NAV: NavEntry[] = [
 const RANK: Record<string, number> = { EMPLOYEE: 0, MANAGER: 1, HR: 2, ADMIN: 3 }
 const PIN_COOKIE = "pd_sidebar"
 
-function Brand({ company, compact }: { company: string; compact?: boolean }) {
+function Brand({ company, logoUrl, compact }: { company: string; logoUrl: string | null; compact?: boolean }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
-        <Users className="size-4" />
-      </span>
+      {logoUrl ? (
+        // the logo is shown on white so any logo stays readable in light and dark themes
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logoUrl} alt="" className="size-9 shrink-0 rounded-xl bg-white object-contain p-0.5 ring-1 ring-border" />
+      ) : (
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <Users className="size-4" />
+        </span>
+      )}
       {!compact && (
         <span className="min-w-0 leading-tight">
           <span className="block truncate text-sm font-semibold" title={company}>
@@ -171,7 +177,7 @@ function Nav({ role, onNavigate, compact }: { role: string; onNavigate?: () => v
   )
 }
 
-export function AppShell({ user, company, initialPinned, notice, children }: { user: U; company: string; initialPinned: boolean; notice?: React.ReactNode; children: React.ReactNode }) {
+export function AppShell({ user, company, logoUrl, initialPinned, notice, children }: { user: U; company: string; logoUrl: string | null; initialPinned: boolean; notice?: React.ReactNode; children: React.ReactNode }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const [pinned, setPinned] = useState(initialPinned)
@@ -205,10 +211,10 @@ export function AppShell({ user, company, initialPinned, notice, children }: { u
           <div className="mb-4 flex items-center justify-between gap-1 px-0.5">
             {user.role === "ADMIN" && expanded ? (
               <Link href="/settings?tab=company" className="min-w-0 rounded-lg hover:opacity-80" title={t("shell.editCompany")}>
-                <Brand company={company} />
+                <Brand company={company} logoUrl={logoUrl} />
               </Link>
             ) : (
-              <Brand company={company} compact={!expanded} />
+              <Brand company={company} logoUrl={logoUrl} compact={!expanded} />
             )}
             {expanded && (
               <Button
@@ -232,7 +238,7 @@ export function AppShell({ user, company, initialPinned, notice, children }: { u
         <SheetContent side="left" className="w-64 p-3">
           <SheetTitle className="sr-only">{t("nav.navigation")}</SheetTitle>
           <div className="mb-4 px-0.5">
-            <Brand company={company} />
+            <Brand company={company} logoUrl={logoUrl} />
           </div>
           <Nav role={user.role} onNavigate={() => setOpen(false)} />
         </SheetContent>

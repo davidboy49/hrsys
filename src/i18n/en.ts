@@ -588,4 +588,15 @@ export const en: Dict = {
   "alert.ending": "{n} contract(s) end within 30 days",
   "alert.incomplete": "{n} day(s) with a missing check-out in the last week",
   "alert.unknown": "{n} punch(es) from unknown PINs",
+
+  // ---- company logo
+  "set.logo": "Company logo",
+  "set.logo.hint": "Shown in the sidebar (open and collapsed) and on the sign-in page. JPG, PNG or WebP up to 2 MB. A square image works best.",
+  "set.logo.upload": "Upload logo",
+  "set.logo.replace": "Replace logo",
+  "set.logo.remove": "Remove logo",
+  "set.logo.saved": "Logo updated",
+  "set.logo.removed": "Logo removed",
+  "set.logo.none": "No logo yet. The PeopleDesk icon is shown instead.",
+  "set.logo.err.choose": "Choose an image first.",
 }

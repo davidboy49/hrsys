@@ -33,7 +33,7 @@ function sniffImage(b: Buffer): "image/jpeg" | "image/png" | "image/webp" | null
   return null
 }
 
-export async function savePhoto(file: File, name: string): Promise<string> {
+export async function savePhoto(file: File, name: string, folder: "employees" | "branding" = "employees"): Promise<string> {
   if (!OK.includes(file.type)) throw new Error("upload.err.type")
   if (file.size > MAX_PHOTO) throw new Error("form.photoSize")
   const body = Buffer.from(await file.arrayBuffer())
@@ -43,7 +43,7 @@ export async function savePhoto(file: File, name: string): Promise<string> {
   const file_name = `${name}-${Date.now()}.${ext}`
 
   if (s3Configured()) {
-    const key = `employees/${file_name}`
+    const key = `${folder}/${file_name}`
     await s3().send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body, ContentType: real }))
     return `s3:${key}`
   }

@@ -10,6 +10,7 @@ import { BCRYPT_COST, passwordSchema } from "@/lib/password"
 import { rateLimit, waitText } from "@/lib/rate-limit"
 import { getT } from "@/i18n/server"
 import { createSession } from "@/lib/session"
+import { removePhoto, savePhoto } from "@/lib/uploads"
 
 type R = { error?: string; ok?: boolean }
 
@@ -111,5 +112,37 @@ export async function changeOwnPassword(form: FormData): Promise<R> {
   // every other signed-in device is signed out; keep this one
   await createSession({ id: updated.id, tokenVersion: updated.tokenVersion }, true)
   await audit(u.id, "password", "User", u.id)
+  return { ok: true }
+}
+
+/** Uploads or replaces the company logo shown in the sidebar and on the sign-in page. */
+export async function saveCompanyLogo(form: FormData): Promise<R> {
+  const t = await getT()
+  const user = await assertRole("ADMIN")
+  const file = form.get("logo")
+  if (!(file instanceof File) || file.size === 0) return { error: t("set.logo.err.choose") }
+  const prev = await db.setting.findUnique({ where: { key: "company.logo" } })
+  let ref: string
+  try {
+    ref = await savePhoto(file, "company-logo", "branding")
+  } catch (e) {
+    return { error: t((e as Error).message) }
+  }
+  await db.setting.upsert({ where: { key: "company.logo" }, update: { value: ref }, create: { key: "company.logo", value: ref } })
+  if (prev?.value) await removePhoto(prev.value)
+  await audit(user.id, "update", "Setting", undefined, "company logo")
+  revalidatePath("/", "layout")
+  return { ok: true }
+}
+
+export async function removeCompanyLogo(): Promise<R> {
+  const user = await assertRole("ADMIN")
+  const prev = await db.setting.findUnique({ where: { key: "company.logo" } })
+  if (prev) {
+    await db.setting.delete({ where: { key: "company.logo" } })
+    await removePhoto(prev.value)
+  }
+  await audit(user.id, "delete", "Setting", undefined, "company logo")
+  revalidatePath("/", "layout")
   return { ok: true }
 }
