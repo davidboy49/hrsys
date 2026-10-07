@@ -208,3 +208,22 @@
 html[lang="km"] body { line-height: 1.7; }
 html[lang="km"] * { letter-spacing: normal !important; }
 html[lang="km"] .uppercase { text-transform: none; }
+
+/* ---- Guide page ---- */
+.guide { line-height: 1.75; }
+.guide h2 { font-size: 1.3rem; font-weight: 600; margin: 2.2rem 0 0.7rem; padding-top: 1.2rem; border-top: 1px solid var(--border); scroll-margin-top: 1rem; }
+.guide h2:first-of-type { border-top: 0; padding-top: 0; margin-top: 1.4rem; }
+.guide h3 { font-size: 1.05rem; font-weight: 600; margin: 1.5rem 0 0.4rem; }
+.guide p, .guide li { max-width: 44rem; }
+.guide ul, .guide ol { padding-inline-start: 1.4rem; margin: 0.4rem 0; }
+.guide ul { list-style: disc; }
+.guide ol { list-style: decimal; }
+.guide li { margin: 0.2rem 0; }
+.guide code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.9em; background: var(--muted); padding: 0.1em 0.35em; border-radius: 0.3rem; }
+.guide a { color: var(--primary); text-decoration: underline; }
+.guide-table { overflow-x: auto; margin: 0.9rem 0; border: 1px solid var(--border); border-radius: 0.6rem; }
+.guide table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+.guide th, .guide td { text-align: start; vertical-align: top; padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--border); }
+.guide th { background: var(--muted); font-weight: 600; white-space: nowrap; }
+.guide tr:last-child td { border-bottom: 0; }
+.guide td:first-child { min-width: 9rem; }

@@ -750,4 +750,6 @@ export const en: Dict = {
   "tg.punchHint": "A message for each scan, for example when 50 people arrive at once. Telegram allows about 20 messages a minute to a group, so a busy morning may arrive a little late.",
   "tg.msg.in": "🟢 {name} ({no}) checked in at {time} · {place}",
   "tg.msg.out": "🔴 {name} ({no}) checked out at {time} · {place}",
+  // ---- guide
+  "nav.guide": "User guide", "guide.desc": "How to use PeopleDesk. Choose Khmer or English with the language switch at the top.", "guide.contents": "Contents",
 }
