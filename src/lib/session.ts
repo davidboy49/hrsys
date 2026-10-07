@@ -6,10 +6,19 @@ import type { Role } from "@prisma/client"
 import { db } from "@/lib/db"
 
 export const COOKIE = "pd_session"
-const MAX_AGE = 60 * 60 * 24 * 7
+
+/**
+ * How long a sign-in lasts, in days (0 = until the browser closes, and at most 12 hours).
+ * Staff who check in by phone stay signed in for 90 days; managers and HR for 30 if they tick "keep me signed in".
+ * Every visit renews it (see proxy.ts), so someone who uses the app regularly never has to sign in again.
+ */
+export function sessionDays(role: Role, remember: boolean) {
+  if (role === "EMPLOYEE") return 90
+  return remember ? 30 : 0
+}
 
 export type SessionUser = { id: string; email: string; name: string; role: Role }
-type Claims = { id: string; v: number }
+type Claims = { id: string; v: number; d: number }
 
 function key() {
   const s = process.env.AUTH_SECRET
@@ -17,11 +26,11 @@ function key() {
   return new TextEncoder().encode(s)
 }
 
-async function encrypt(claims: Claims, remember: boolean) {
+async function encrypt(claims: Claims) {
   return new SignJWT({ ...claims })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(remember ? "7d" : "12h")
+    .setExpirationTime(claims.d > 0 ? `${claims.d}d` : "12h")
     .sign(key())
 }
 
@@ -30,22 +39,22 @@ async function decrypt(token: string | undefined): Promise<Claims | null> {
   try {
     const { payload } = await jwtVerify(token, key(), { algorithms: ["HS256"] })
     if (typeof payload.id !== "string" || typeof payload.v !== "number") return null
-    return { id: payload.id, v: payload.v }
+    return { id: payload.id, v: payload.v, d: typeof payload.d === "number" ? payload.d : 0 }
   } catch {
     return null
   }
 }
 
 /** The cookie holds only who and which token version. Name and role are always read from the database. */
-export async function createSession(user: { id: string; tokenVersion: number }, remember: boolean) {
-  const token = await encrypt({ id: user.id, v: user.tokenVersion }, remember)
+export async function createSession(user: { id: string; tokenVersion: number }, days: number) {
+  const token = await encrypt({ id: user.id, v: user.tokenVersion, d: days })
   const jar = await cookies()
   jar.set(COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    ...(remember ? { maxAge: MAX_AGE } : {}),
+    ...(days > 0 ? { maxAge: days * 86400 } : {}),
   })
 }
 

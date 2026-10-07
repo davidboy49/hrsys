@@ -9,7 +9,7 @@ import { audit } from "@/lib/audit"
 import { BCRYPT_COST, passwordSchema } from "@/lib/password"
 import { rateLimit, waitText } from "@/lib/rate-limit"
 import { getT } from "@/i18n/server"
-import { createSession } from "@/lib/session"
+import { createSession, sessionDays } from "@/lib/session"
 import { removePhoto, savePhoto } from "@/lib/uploads"
 
 type R = { error?: string; ok?: boolean }
@@ -110,7 +110,7 @@ export async function changeOwnPassword(form: FormData): Promise<R> {
   if (next === cur) return { error: t("users.err.samePw") }
   const updated = await db.user.update({ where: { id: u.id }, data: { passwordHash: await bcrypt.hash(next, BCRYPT_COST), tokenVersion: { increment: 1 } } })
   // every other signed-in device is signed out; keep this one
-  await createSession({ id: updated.id, tokenVersion: updated.tokenVersion }, true)
+  await createSession({ id: updated.id, tokenVersion: updated.tokenVersion }, sessionDays(updated.role, true))
   await audit(u.id, "password", "User", u.id)
   return { ok: true }
 }

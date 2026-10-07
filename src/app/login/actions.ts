@@ -3,7 +3,7 @@
 import bcrypt from "bcryptjs"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
-import { createSession, destroySession } from "@/lib/session"
+import { createSession, destroySession, sessionDays } from "@/lib/session"
 import { audit } from "@/lib/audit"
 import { clientIp, rateLimit, waitText } from "@/lib/rate-limit"
 import { getT } from "@/i18n/server"
@@ -54,7 +54,7 @@ export async function login(_: LoginState, form: FormData): Promise<LoginState> 
   }
 
   await db.user.update({ where: { id: user.id }, data: { failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() } })
-  await createSession({ id: user.id, tokenVersion: user.tokenVersion }, remember)
+  await createSession({ id: user.id, tokenVersion: user.tokenVersion }, sessionDays(user.role, remember))
   await audit(user.id, "login", "User", user.id, `ip ${ip}`)
   redirect(next ?? (user.role === "EMPLOYEE" ? "/scan" : "/employees"))
 }
