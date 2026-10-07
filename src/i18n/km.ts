@@ -746,4 +746,8 @@ export const km: Dict = {
   "rq.submit": "ផ្ញើសំណើ", "rq.sent": "បានផ្ញើសំណើ", "rq.approve": "អនុម័ត", "rq.reject": "បដិសេធ", "rq.approved": "បានអនុម័ត", "rq.rejected": "បានបដិសេធ",
   "rq.rejectWhy": "មូលហេតុនៃការបដិសេធ (មិនចាំបាច់)", "rq.cancelConfirm": "បោះបង់សំណើនេះ?", "rq.cancelled": "បានបោះបង់",
   "rq.status.PENDING": "កំពុងរង់ចាំ", "rq.status.APPROVED": "បានអនុម័ត", "rq.status.REJECTED": "បានបដិសេធ", "rq.status.CANCELLED": "បានបោះបង់",
+  "tg.punch": "រាល់ការចូល និងចេញ",
+  "tg.punchHint": "សារមួយសម្រាប់រាល់ការស្កេន។ Telegram អនុញ្ញាតប្រហែល 20 សារក្នុងមួយនាទីទៅក្រុម ដូច្នេះពេលព្រឹកដែលមមាញឹកអាចមកយឺតបន្តិច។",
+  "tg.msg.in": "🟢 {name} ({no}) បានចូលម៉ោង {time} · {place}",
+  "tg.msg.out": "🔴 {name} ({no}) បានចេញម៉ោង {time} · {place}",
 }

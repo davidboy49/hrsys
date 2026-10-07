@@ -746,4 +746,8 @@ export const en: Dict = {
   "rq.submit": "Send request", "rq.sent": "Request sent", "rq.approve": "Approve", "rq.reject": "Reject", "rq.approved": "Approved", "rq.rejected": "Rejected",
   "rq.rejectWhy": "Reason for rejecting (optional)", "rq.cancelConfirm": "Cancel this request?", "rq.cancelled": "Cancelled",
   "rq.status.PENDING": "Pending", "rq.status.APPROVED": "Approved", "rq.status.REJECTED": "Rejected", "rq.status.CANCELLED": "Cancelled",
+  "tg.punch": "Every check-in and check-out",
+  "tg.punchHint": "A message for each scan, for example when 50 people arrive at once. Telegram allows about 20 messages a minute to a group, so a busy morning may arrive a little late.",
+  "tg.msg.in": "🟢 {name} ({no}) checked in at {time} · {place}",
+  "tg.msg.out": "🔴 {name} ({no}) checked out at {time} · {place}",
 }

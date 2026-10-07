@@ -75,6 +75,13 @@ export async function punchByQr(token: string, type: "IN" | "OUT", geo: { lat: n
   })
   await db.device.update({ where: { id: device.id }, data: { lastSyncAt: now, status: "ONLINE" } })
   await rebuildDaily(emp.id, localDateKey(now))
+  // every check-in and check-out, when the group has asked for them (off by default)
+  after(async () =>
+    notifyTelegram(
+      "punch",
+      await tgText(type === "IN" ? "tg.msg.in" : "tg.msg.out", { name: esc(emp.nameEn), no: emp.employeeNo, time: fmtTime(now), place: esc(loc.name) }),
+    ),
+  )
   if (type === "IN") {
     // the first check-in of the day was late: tell the HR group
     const day = await db.attendanceDaily.findUnique({ where: { employeeId_date: { employeeId: emp.id, date: new Date(localDateKey(now) + "T00:00:00.000Z") } } })
