@@ -3,7 +3,7 @@ import { getT } from "@/i18n/server"
 
 const rise = (ms: number): React.CSSProperties => ({ animationDelay: `${ms}ms` })
 
-export async function LoginArt({ company, logoUrl }: { company: string; logoUrl: string | null }) {
+export async function LoginArt({ company, logoUrl }: { company: string; logoUrl: string }) {
   const t = await getT()
   return (
     <section className="art-panel hidden flex-col justify-between p-10 text-white lg:flex">

@@ -597,6 +597,6 @@ export const en: Dict = {
   "set.logo.remove": "Remove logo",
   "set.logo.saved": "Logo updated",
   "set.logo.removed": "Logo removed",
-  "set.logo.none": "No logo yet. The PeopleDesk icon is shown instead.",
+  "set.logo.none": "No company logo yet. The default HRS logo is shown instead.",
   "set.logo.err.choose": "Choose an image first.",
 }

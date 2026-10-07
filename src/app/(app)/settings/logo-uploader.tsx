@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useT } from "@/i18n/provider"
 import { removeCompanyLogo, saveCompanyLogo } from "./actions"
 
-export function LogoUploader({ logoUrl, canEdit }: { logoUrl: string | null; canEdit: boolean }) {
+export function LogoUploader({ logoUrl, defaultLogo, canEdit }: { logoUrl: string | null; defaultLogo: string; canEdit: boolean }) {
   const t = useT()
   const input = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -42,14 +42,8 @@ export function LogoUploader({ logoUrl, canEdit }: { logoUrl: string | null; can
         <p className="mt-0.5 text-xs text-muted-foreground">{t("set.logo.hint")}</p>
       </div>
       <div className="flex items-center gap-4">
-        {shown ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={shown} alt="" className="size-20 rounded-2xl bg-white object-contain p-1 ring-1 ring-border" />
-        ) : (
-          <span className="grid size-20 place-items-center rounded-2xl border-2 border-dashed text-muted-foreground">
-            <ImagePlus className="size-6" />
-          </span>
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={shown ?? defaultLogo} alt="" className={`size-20 rounded-2xl bg-white object-contain p-1 ring-1 ring-border ${shown ? "" : "opacity-70"}`} />
         {canEdit ? (
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">

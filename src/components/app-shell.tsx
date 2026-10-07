@@ -64,7 +64,7 @@ const NAV: NavEntry[] = [
 const RANK: Record<string, number> = { EMPLOYEE: 0, MANAGER: 1, HR: 2, ADMIN: 3 }
 const PIN_COOKIE = "pd_sidebar"
 
-function Brand({ company, logoUrl, compact }: { company: string; logoUrl: string | null; compact?: boolean }) {
+function Brand({ company, logoUrl, compact }: { company: string; logoUrl: string; compact?: boolean }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       {logoUrl ? (
@@ -177,7 +177,7 @@ function Nav({ role, onNavigate, compact }: { role: string; onNavigate?: () => v
   )
 }
 
-export function AppShell({ user, company, logoUrl, initialPinned, notice, children }: { user: U; company: string; logoUrl: string | null; initialPinned: boolean; notice?: React.ReactNode; children: React.ReactNode }) {
+export function AppShell({ user, company, logoUrl, initialPinned, notice, children }: { user: U; company: string; logoUrl: string; initialPinned: boolean; notice?: React.ReactNode; children: React.ReactNode }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const [pinned, setPinned] = useState(initialPinned)

@@ -31,6 +31,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const sp = await searchParams
   const tab = tabs.find((x) => x.id === sp.tab)?.id ?? "company"
 
+  const brand = await getBranding()
   const settings = Object.fromEntries((await db.setting.findMany()).map((s) => [s.key, s.value]))
 
   return (
@@ -39,7 +40,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
       {tab === "company" && (
         <div className="space-y-8">
-          <LogoUploader logoUrl={(await getBranding()).logoUrl} canEdit={isAdmin} />
+          <LogoUploader logoUrl={brand.custom ? brand.logoUrl : null} defaultLogo={brand.logoUrl} canEdit={isAdmin} />
         <SettingsForm
           values={settings}
           disabled={!isAdmin}
