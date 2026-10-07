@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
 import { db } from "@/lib/db"
 import { getSession } from "@/lib/session"
 import { distanceM } from "@/lib/qr"
@@ -10,6 +11,8 @@ import { audit } from "@/lib/audit"
 import { QR_REASON_KEY, qrDeviceFor, resolveQr } from "@/lib/qr-attendance"
 import { rateLimit } from "@/lib/rate-limit"
 import { getT } from "@/i18n/server"
+import { esc, notifyTelegram, tgText } from "@/lib/telegram"
+import { fmtTime } from "@/lib/format"
 
 /** A phone reporting a position less precise than this cannot prove it is at the site. */
 const MAX_ACCURACY_M = 100
@@ -41,7 +44,13 @@ export async function punchByQr(token: string, type: "IN" | "OUT", geo: { lat: n
     if (r.kind === "static" && geo.accuracy > MAX_ACCURACY_M) return { ok: false, error: t("scan.err.accuracy", { m: Math.round(geo.accuracy) }) }
     distance = distanceM(geo.lat, geo.lng, loc.latitude!, loc.longitude!)
     const allowed = loc.radiusM + Math.min(Math.max(geo.accuracy, 0), 50)
-    if (distance > allowed) return { ok: false, error: t("scan.err.far", { m: Math.round(distance), name: loc.name }) }
+    if (distance > allowed) {
+      // someone scanning from outside the allowed distance is worth telling HR about (at most once per 10 minutes per person)
+      const who = me.employee
+      const metres = Math.round(distance)
+      after(async () => notifyTelegram("far", await tgText("tg.msg.far", { name: esc(who.nameEn), no: who.employeeNo, place: esc(loc.name), m: metres, type: await tgText(type === "IN" ? "att.checkIn" : "att.checkOut") }), `far:${who.id}`))
+      return { ok: false, error: t("scan.err.far", { m: Math.round(distance), name: loc.name }) }
+    }
   }
 
   const emp = me.employee
@@ -66,6 +75,13 @@ export async function punchByQr(token: string, type: "IN" | "OUT", geo: { lat: n
   })
   await db.device.update({ where: { id: device.id }, data: { lastSyncAt: now, status: "ONLINE" } })
   await rebuildDaily(emp.id, localDateKey(now))
+  if (type === "IN") {
+    // the first check-in of the day was late: tell the HR group
+    const day = await db.attendanceDaily.findUnique({ where: { employeeId_date: { employeeId: emp.id, date: new Date(localDateKey(now) + "T00:00:00.000Z") } } })
+    if (day && day.lateMin > 0 && day.firstIn?.getTime() === now.getTime()) {
+      after(async () => notifyTelegram("late", await tgText("tg.msg.late", { name: esc(emp.nameEn), no: emp.employeeNo, time: fmtTime(now), m: day.lateMin, place: esc(loc.name) }), `late:${emp.id}:${localDateKey(now)}`))
+    }
+  }
   await audit(user.id, "qr-punch", "AttendancePunch", undefined, `${type} at ${loc.name}`)
   revalidatePath("/attendance")
   return { ok: true, type, at: now.toISOString(), location: loc.name }

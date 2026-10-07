@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { useTheme } from "next-themes"
-import { ChevronDown, Clock, Database, LayoutDashboard, LogOut, Menu, Moon, Pin, PinOff, Settings, Sun, Users } from "lucide-react"
+import { ChevronDown, Clock, Database, Megaphone, LayoutDashboard, LogOut, Menu, Moon, Pin, PinOff, Settings, Sun, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
@@ -36,6 +36,7 @@ const NAV: NavEntry[] = [
       { href: "/attendance/qr", label: "att.qr", min: 2 },
     ],
   },
+  { href: "/announcements", label: "nav.announcements", icon: Megaphone, min: 2 },
   { group: "nav.admin" },
   {
     href: "/masterdata",
@@ -55,6 +56,7 @@ const NAV: NavEntry[] = [
       { href: "/settings?tab=attendance", label: "set.tab.attendance", min: 2, tab: "attendance" },
       { href: "/settings?tab=numbering", label: "set.tab.numbering", min: 2, tab: "numbering" },
       { href: "/settings?tab=templates", label: "set.tab.templates", min: 2, tab: "templates" },
+      { href: "/settings?tab=notifications", label: "set.tab.notifications", min: 3, tab: "notifications" },
       { href: "/settings?tab=audit", label: "set.tab.audit", min: 3, tab: "audit" },
       { href: "/settings?tab=account", label: "set.tab.account", min: 2, tab: "account" },
     ],

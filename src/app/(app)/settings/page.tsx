@@ -9,6 +9,8 @@ import { PasswordForm, SettingsForm, UsersPanel } from "./forms"
 import { LogoUploader } from "./logo-uploader"
 import { getBranding } from "@/lib/branding"
 import { getT, titleOf } from "@/i18n/server"
+import { tgConfig } from "@/lib/telegram"
+import { TelegramForm } from "./telegram-form"
 
 export const generateMetadata = titleOf("nav.settings")
 export const dynamic = "force-dynamic"
@@ -19,6 +21,7 @@ const TABS = [
   { id: "attendance", label: "set.tab.attendance" },
   { id: "numbering", label: "set.tab.numbering" },
   { id: "templates", label: "set.tab.templates" },
+  { id: "notifications", label: "set.tab.notifications", admin: true },
   { id: "audit", label: "set.tab.audit", admin: true },
   { id: "account", label: "set.tab.account" },
 ]
@@ -95,6 +98,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </div>
       )}
 
+      {tab === "notifications" && isAdmin && await (async () => {
+        const c = await tgConfig()
+        return <TelegramForm cfg={{ hasToken: Boolean(c.token), chatId: c.chatId, enabled: c.enabled, lang: c.lang, flags: c.flags }} />
+      })()}
       {tab === "audit" && isAdmin && <Audit />}
       {tab === "account" && (
         <div className="space-y-4">

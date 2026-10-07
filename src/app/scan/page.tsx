@@ -8,6 +8,7 @@ import { fmtDateTime } from "@/lib/format"
 import { logout } from "@/app/login/actions"
 import { Button } from "@/components/ui/button"
 import { ScanClient } from "./scan-client"
+import { ActiveAnnouncements } from "@/components/active-announcements"
 import { getT, titleOf } from "@/i18n/server"
 import { LanguageSwitcher } from "@/components/language-switcher"
 
@@ -56,6 +57,8 @@ export default async function ScanPage({ searchParams }: { searchParams: Promise
           </form>
         </div>
       </header>
+
+      <ActiveAnnouncements limit={2} />
 
       <section>
         <p className="text-sm text-muted-foreground">{t("scan.signedInAs")}</p>

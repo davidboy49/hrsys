@@ -70,6 +70,7 @@ model User {
   employee     Employee? @relation(fields: [employeeId], references: [id])
   createdAt    DateTime  @default(now())
   auditLogs    AuditLog[]
+  announcements Announcement[]
 }
 
 model Department {
@@ -305,4 +306,18 @@ model RateLimit {
   key         String   @id
   windowStart DateTime @default(now())
   count       Int      @default(1)
+}
+
+/// Messages from HR to everyone. Shown in the app, and optionally sent to the Telegram group.
+model Announcement {
+  id             String    @id @default(cuid())
+  title          String
+  body           String
+  authorId       String?
+  author         User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  expiresAt      DateTime?
+  sentToTelegram Boolean   @default(false)
+
+  @@index([createdAt])
 }
