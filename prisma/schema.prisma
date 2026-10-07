@@ -26,6 +26,13 @@ enum Gender {
   OTHER
 }
 
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 enum DayKind {
   WORK
   OFF
@@ -164,47 +171,50 @@ model Holiday {
 }
 
 model Employee {
-  id                 String            @id @default(cuid())
-  employeeNo         String            @unique
+  id                 String             @id @default(cuid())
+  employeeNo         String             @unique
   nameEn             String
   nameKm             String?
   photoUrl           String?
   gender             Gender?
-  dob                DateTime?         @db.Date
+  dob                DateTime?          @db.Date
   phone              String?
   email              String?
   nationalId         String?
   address            String?
   departmentId       String
-  department         Department        @relation(fields: [departmentId], references: [id])
+  department         Department         @relation(fields: [departmentId], references: [id])
   designationId      String
-  designation        Designation       @relation(fields: [designationId], references: [id])
+  designation        Designation        @relation(fields: [designationId], references: [id])
   contractTypeId     String
-  contractType       ContractType      @relation(fields: [contractTypeId], references: [id])
+  contractType       ContractType       @relation(fields: [contractTypeId], references: [id])
   statusId           String
-  status             EmployeeStatus    @relation(fields: [statusId], references: [id])
+  status             EmployeeStatus     @relation(fields: [statusId], references: [id])
   locationId         String?
-  location           Location?         @relation(fields: [locationId], references: [id])
+  location           Location?          @relation(fields: [locationId], references: [id])
   shiftId            String?
-  shift              Shift?            @relation(fields: [shiftId], references: [id])
+  shift              Shift?             @relation(fields: [shiftId], references: [id])
   scheduleTemplateId String?
-  scheduleTemplate   ScheduleTemplate? @relation(fields: [scheduleTemplateId], references: [id], onDelete: SetNull)
+  scheduleTemplate   ScheduleTemplate?  @relation(fields: [scheduleTemplateId], references: [id], onDelete: SetNull)
   rosterEntries      RosterEntry[]
-  joiningDate        DateTime          @db.Date
-  contractEnd        DateTime?         @db.Date
-  leavingDate        DateTime?         @db.Date
-  rateAmount         Decimal           @db.Decimal(12, 2)
-  rateBasis          RateBasis         @default(MONTH)
-  currency           String            @default("USD")
-  zkPin              String?           @unique
+  joiningDate        DateTime           @db.Date
+  contractEnd        DateTime?          @db.Date
+  leavingDate        DateTime?          @db.Date
+  rateAmount         Decimal            @db.Decimal(12, 2)
+  rateBasis          RateBasis          @default(MONTH)
+  currency           String             @default("USD")
+  zkPin              String?            @unique
   deletedAt          DateTime?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
   rateHistory        RateHistory[]
   transfers          BranchTransfer[]
   user               User?
   punches            AttendancePunch[]
   daily              AttendanceDaily[]
+  leaveEntitlements  LeaveEntitlement[]
+  leaveRequests      LeaveRequest[]
+  overtimeRequests   OvertimeRequest[]
 
   @@index([departmentId])
   @@index([designationId])
@@ -367,16 +377,99 @@ model ScheduleTemplateDay {
 
 /// A change for one employee on one date: a different shift, a day off, or leave. It beats the weekly template and holidays.
 model RosterEntry {
-  id         String     @id @default(cuid())
-  employeeId String
-  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  date       DateTime   @db.Date
-  kind       RosterKind
-  shiftId    String?
-  shift      Shift?     @relation(fields: [shiftId], references: [id], onDelete: SetNull)
-  note       String?
-  createdAt  DateTime   @default(now())
+  id             String     @id @default(cuid())
+  employeeId     String
+  employee       Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date           DateTime   @db.Date
+  kind           RosterKind
+  shiftId        String?
+  shift          Shift?     @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  note           String?
+  /// set when an approved leave request created this entry, so cancelling the leave removes exactly these days
+  leaveRequestId String?
+  createdAt      DateTime   @default(now())
 
   @@unique([employeeId, date])
+  @@index([leaveRequestId])
+  @@index([date])
+}
+
+model LeaveType {
+  id           String             @id @default(cuid())
+  code         String             @unique
+  name         String
+  /// unpaid leave is still recorded; payroll will use this later
+  isPaid       Boolean            @default(true)
+  /// yearly allowance in days; empty means no limit
+  daysPerYear  Float?
+  isActive     Boolean            @default(true)
+  requests     LeaveRequest[]
+  entitlements LeaveEntitlement[]
+}
+
+/// A per-person yearly allowance that replaces the type's default.
+model LeaveEntitlement {
+  id          String    @id @default(cuid())
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId String
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  year        Int
+  days        Float
+
+  @@unique([employeeId, leaveTypeId, year])
+}
+
+model LeaveRequest {
+  id           String        @id @default(cuid())
+  employeeId   String
+  employee     Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId  String
+  leaveType    LeaveType     @relation(fields: [leaveTypeId], references: [id])
+  fromDate     DateTime      @db.Date
+  toDate       DateTime      @db.Date
+  /// working days inside the range (days off and holidays are not counted)
+  days         Float
+  reason       String?
+  status       RequestStatus @default(PENDING)
+  requestedBy  String?
+  decidedBy    String?
+  decidedAt    DateTime?
+  decisionNote String?
+  createdAt    DateTime      @default(now())
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([fromDate])
+}
+
+model OvertimeType {
+  id         String            @id @default(cuid())
+  code       String            @unique
+  name       String
+  /// pay multiplier, for example 1.5 for time and a half
+  multiplier Float             @default(1.5)
+  isActive   Boolean           @default(true)
+  requests   OvertimeRequest[]
+}
+
+model OvertimeRequest {
+  id             String        @id @default(cuid())
+  employeeId     String
+  employee       Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  overtimeTypeId String
+  overtimeType   OvertimeType  @relation(fields: [overtimeTypeId], references: [id])
+  date           DateTime      @db.Date
+  hours          Float
+  reason         String?
+  status         RequestStatus @default(PENDING)
+  requestedBy    String?
+  decidedBy      String?
+  decidedAt      DateTime?
+  decisionNote   String?
+  createdAt      DateTime      @default(now())
+
+  @@index([employeeId])
+  @@index([status])
   @@index([date])
 }

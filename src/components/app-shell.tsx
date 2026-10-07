@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { useTheme } from "next-themes"
-import { ChevronDown, Clock, Database, Megaphone, LayoutDashboard, LogOut, Menu, Moon, Pin, PinOff, Settings, Sun, Users } from "lucide-react"
+import { CalendarOff, ChevronDown, Clock, Timer, Database, Megaphone, LayoutDashboard, LogOut, Menu, Moon, Pin, PinOff, Settings, Sun, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
@@ -38,6 +38,8 @@ const NAV: NavEntry[] = [
       { href: "/attendance/qr", label: "att.qr", min: 2 },
     ],
   },
+  { href: "/leave", label: "nav.leave", icon: CalendarOff, min: 0 },
+  { href: "/overtime", label: "nav.overtime", icon: Timer, min: 0 },
   { href: "/announcements", label: "nav.announcements", icon: Megaphone, min: 2 },
   { group: "nav.admin" },
   {
