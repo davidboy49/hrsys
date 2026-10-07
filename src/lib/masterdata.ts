@@ -26,6 +26,7 @@ const BASIS = [
   { value: "DAY", label: "basis.DAY" },
   { value: "HOUR", label: "basis.HOUR" },
 ]
+const SHIFT_COLOUR_OPTIONS = ["blue", "teal", "green", "lime", "amber", "orange", "rose", "purple", "slate"].map((c) => ({ value: c, label: `color.${c}` }))
 const QR_MODES = [
   { value: "STATIC", label: "qrmode.STATIC" },
   { value: "ROTATING", label: "qrmode.ROTATING" },
@@ -87,6 +88,7 @@ export const ENTITIES: EntityDef[] = [
       { name: "startTime", label: "mdf.startTime", type: "time", required: true, column: true },
       { name: "endTime", label: "mdf.endTime", type: "time", required: true, column: true },
       { name: "graceMin", label: "mdf.graceMin", type: "number", required: true, column: true },
+      { name: "colour", label: "mdf.colour", type: "select", options: SHIFT_COLOUR_OPTIONS, required: true, column: true },
     ],
   },
   {

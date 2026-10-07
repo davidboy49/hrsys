@@ -2,6 +2,7 @@ import { db } from "@/lib/db"
 import { adapterFor } from "@/lib/devices"
 import type { RawPunch } from "@/lib/devices/types"
 import { fromLocal, localDateKey, localMinutes } from "@/lib/format"
+import { planFor } from "@/lib/schedule"
 
 /** Store raw punches, link them to employees by PIN, then rebuild the affected daily rows. */
 export async function ingestPunches(deviceId: string, punches: RawPunch[]) {
@@ -51,16 +52,19 @@ export async function relinkUnknown() {
 export async function rebuildDaily(employeeId: string, dateKey: string) {
   const start = fromLocal(dateKey, "00:00")
   const end = new Date(start.getTime() + 86400_000)
-  const [punches, emp] = await Promise.all([
+  const [punches, emp, plan] = await Promise.all([
     db.attendancePunch.findMany({ where: { employeeId, punchedAt: { gte: start, lt: end } }, orderBy: { punchedAt: "asc" } }),
     db.employee.findUnique({ where: { id: employeeId }, select: { shift: true } }),
+    planFor(employeeId, dateKey),
   ])
   if (!punches.length) return
   const firstIn = punches[0].punchedAt
   const lastOut = punches.length > 1 ? punches[punches.length - 1].punchedAt : null
   const workedMin = lastOut ? Math.round((lastOut.getTime() - firstIn.getTime()) / 60000) : 0
-  const grace = emp?.shift?.graceMin ?? 10
-  const [sh, sm] = (emp?.shift?.startTime ?? "08:00").split(":").map(Number)
+  // the shift for this particular day (a roster change or weekly template can differ from the usual shift)
+  const shift = plan.kind === "WORK" && plan.shift ? plan.shift : emp?.shift
+  const grace = shift?.graceMin ?? 10
+  const [sh, sm] = (shift?.startTime ?? "08:00").split(":").map(Number)
   const lateMin = Math.max(0, localMinutes(firstIn) - (sh * 60 + sm + grace))
   const state = !lastOut ? "INCOMPLETE" : lateMin > 0 ? "LATE" : "PRESENT"
   const date = new Date(dateKey + "T00:00:00.000Z")

@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { localDateKey, localMinutes } from "@/lib/format"
 import { buildPunchWhere, parsePunchFilters } from "@/lib/punches"
 import type { SP } from "@/lib/employees"
+import { loadPlanner } from "@/lib/schedule"
 
 /** Same layout as the "Attendance Logs" sheet the company already uses: one row per employee per day. */
 export const LOG_HEADERS = ["No", "Date", "Code", "Name", "Site", "Department", "Designation", "Shift", "Schedule", "Total Hour", "In", "Out", "Clocked Hour", "Remark"]
@@ -55,14 +56,12 @@ export async function buildLogRows(sp: SP): Promise<{ rows: LogRow[]; company: s
   // with a date range and no device/type/match filter, working days without any punch are listed too
   const wantAbsent = Boolean(f.from && f.to) && !f.device.length && !f.type && !f.match
   const today = localDateKey(new Date())
-  let days: string[] = []
+  const days: string[] = []
   if (wantAbsent) {
     const start = new Date(f.from + "T00:00:00Z")
     const end = new Date(Math.min(new Date(f.to + "T00:00:00Z").getTime(), new Date(today + "T00:00:00Z").getTime()))
     for (let d = start; d <= end && days.length <= MAX_RANGE_DAYS; d = new Date(d.getTime() + 86400_000)) days.push(d.toISOString().slice(0, 10))
-    days = days.filter((d) => new Date(d + "T00:00:00Z").getUTCDay() !== 0) // Sunday off
   }
-  const holidays = wantAbsent ? new Set((await db.holiday.findMany({ where: { isActive: true, date: { gte: new Date(f.from + "T00:00:00Z"), lte: new Date(f.to + "T00:00:00Z") } } })).map((h) => h.date.toISOString().slice(0, 10))) : new Set<string>()
 
   const empIds = new Set<string>([...byDay.keys()].map((k) => k.split("|")[0]))
   const empWhere = wantAbsent
@@ -79,18 +78,28 @@ export async function buildLogRows(sp: SP): Promise<{ rows: LogRow[]; company: s
     include: { department: true, designation: true, location: true, shift: true },
   })
 
+  // each person's plan per day: their weekly template, holidays and one-day roster changes
+  const punchKeys = [...byDay.keys()].map((k) => k.split("|")[1]).sort()
+  const allKeys = [...days, ...punchKeys].sort()
+  const plan = allKeys.length ? await loadPlanner(emps.map((e) => e.id), allKeys[0], allKeys[allKeys.length - 1]) : null
+
   const rows: LogRow[] = []
   let truncated = false
   outer: for (const e of emps) {
-    const shift = e.shift
-    const sStart = shift ? hhmmToMin(shift.startTime) : null
-    const sEnd = shift ? hhmmToMin(shift.endTime) : null
     const keys = new Set<string>([...byDay.keys()].filter((k) => k.startsWith(e.id + "|")).map((k) => k.split("|")[1]))
-    if (wantAbsent) {
+    if (wantAbsent && plan) {
       const joined = e.joiningDate.toISOString().slice(0, 10)
-      for (const d of days) if (d >= joined && !holidays.has(d)) keys.add(d)
+      // only days the person was meant to work (or was on leave) appear when there is no punch
+      for (const d of days) {
+        const k = plan(e.id, d).kind
+        if (d >= joined && (k === "WORK" || k === "LEAVE")) keys.add(d)
+      }
     }
     for (const date of [...keys].sort()) {
+      const dp = plan ? plan(e.id, date) : null
+      const shift = dp?.shift ?? e.shift
+      const sStart = shift ? hhmmToMin(shift.startTime) : null
+      const sEnd = shift ? hhmmToMin(shift.endTime) : null
       if (rows.length >= MAX_ROWS) {
         truncated = true
         break outer
@@ -101,7 +110,7 @@ export async function buildLogRows(sp: SP): Promise<{ rows: LogRow[]; company: s
       let outT = "N/A"
       let hours = 0
       if (!d) {
-        remarks.push("Error: No clock in and clock out")
+        remarks.push(dp?.kind === "LEAVE" ? "On leave" : "Error: No clock in and clock out")
       } else {
         inT = clock(localMinutes(d.first))
         if (d.n > 1) {
@@ -110,7 +119,10 @@ export async function buildLogRows(sp: SP): Promise<{ rows: LogRow[]; company: s
         } else {
           remarks.push("Error: No clock in or clock out")
         }
-        if (sStart !== null && sEnd !== null) {
+        if (dp?.kind === "OFF") remarks.push("Worked on day off")
+        if (dp?.kind === "HOLIDAY") remarks.push("Worked on public holiday")
+        if (dp?.kind === "LEAVE") remarks.push("Clocked during leave")
+        if (dp?.kind === "WORK" && sStart !== null && sEnd !== null) {
           const lateBy = localMinutes(d.first) - sStart
           if (lateBy > lateAfter) remarks.push(`LI: ${lateBy} min`)
           if (d.n > 1) {
@@ -127,9 +139,9 @@ export async function buildLogRows(sp: SP): Promise<{ rows: LogRow[]; company: s
         e.location?.name ?? "",
         e.department.name,
         e.designation.name,
-        shift?.name ?? "",
-        sStart !== null && sEnd !== null ? `${clock(sStart)} - ${clock(sEnd)}` : "",
-        sStart !== null && sEnd !== null ? round2((sEnd - sStart) / 60) : 0,
+        dp && dp.kind !== "WORK" ? (dp.kind === "OFF" ? "Day off" : dp.kind === "HOLIDAY" ? "Public holiday" : "Leave") : (shift?.name ?? ""),
+        dp && dp.kind !== "WORK" ? "" : sStart !== null && sEnd !== null ? `${clock(sStart)} - ${clock(sEnd)}` : "",
+        dp && dp.kind !== "WORK" ? 0 : sStart !== null && sEnd !== null ? round2((sEnd - sStart) / 60) : 0,
         inT,
         outT,
         hours,

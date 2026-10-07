@@ -31,6 +31,7 @@ const schema = z.object({
   statusId: z.string().min(1, "err.statusReq"),
   locationId: opt(z.string()),
   shiftId: opt(z.string()),
+  scheduleTemplateId: opt(z.string()),
   joiningDate: z.string().min(1, "err.joiningReq"),
   contractEnd: opt(z.string()),
   leavingDate: opt(z.string()),
@@ -91,6 +92,8 @@ export async function saveEmployee(id: string | null, _: FormState, form: FormDa
     statusId: d.statusId,
     locationId: d.locationId,
     shiftId: d.shiftId,
+    // "__personal" means the weekly pattern was set on the roster, so the form leaves it alone
+    ...(d.scheduleTemplateId === "__personal" ? {} : { scheduleTemplateId: d.scheduleTemplateId }),
     joiningDate: toDate(d.joiningDate)!,
     contractEnd: toDate(d.contractEnd),
     // someone who left keeps a leaving date (today if none was entered); anyone active has none

@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -24,6 +24,17 @@ enum Gender {
   MALE
   FEMALE
   OTHER
+}
+
+enum DayKind {
+  WORK
+  OFF
+}
+
+enum RosterKind {
+  WORK
+  OFF
+  LEAVE
 }
 
 enum QrMode {
@@ -56,32 +67,32 @@ enum DailyState {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  name         String
-  passwordHash String
-  role         Role      @default(HR)
-  isActive     Boolean   @default(true)
-  failedLogins Int       @default(0)
-  tokenVersion Int       @default(0)
-  lockedUntil  DateTime?
-  lastLoginAt  DateTime?
-  employeeId   String?   @unique
-  employee     Employee? @relation(fields: [employeeId], references: [id])
-  createdAt    DateTime  @default(now())
-  auditLogs    AuditLog[]
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String
+  passwordHash  String
+  role          Role           @default(HR)
+  isActive      Boolean        @default(true)
+  failedLogins  Int            @default(0)
+  tokenVersion  Int            @default(0)
+  lockedUntil   DateTime?
+  lastLoginAt   DateTime?
+  employeeId    String?        @unique
+  employee      Employee?      @relation(fields: [employeeId], references: [id])
+  createdAt     DateTime       @default(now())
+  auditLogs     AuditLog[]
   announcements Announcement[]
 }
 
 model Department {
-  id        String        @id @default(cuid())
-  code      String        @unique
-  name      String
-  parentId  String?
-  parent    Department?   @relation("DeptTree", fields: [parentId], references: [id])
-  children  Department[]  @relation("DeptTree")
-  isActive  Boolean       @default(true)
-  employees Employee[]
+  id           String        @id @default(cuid())
+  code         String        @unique
+  name         String
+  parentId     String?
+  parent       Department?   @relation("DeptTree", fields: [parentId], references: [id])
+  children     Department[]  @relation("DeptTree")
+  isActive     Boolean       @default(true)
+  employees    Employee[]
   designations Designation[]
 }
 
@@ -131,14 +142,17 @@ model Location {
 }
 
 model Shift {
-  id         String     @id @default(cuid())
-  code       String     @unique
-  name       String
-  startTime  String // HH:mm
-  endTime    String // HH:mm
-  graceMin   Int        @default(10)
-  isActive   Boolean    @default(true)
-  employees  Employee[]
+  id            String                @id @default(cuid())
+  code          String                @unique
+  name          String
+  startTime     String // HH:mm
+  endTime       String // HH:mm
+  graceMin      Int                   @default(10)
+  colour        String                @default("blue")
+  isActive      Boolean               @default(true)
+  templateDays  ScheduleTemplateDay[]
+  rosterEntries RosterEntry[]
+  employees     Employee[]
 }
 
 model Holiday {
@@ -150,44 +164,47 @@ model Holiday {
 }
 
 model Employee {
-  id             String         @id @default(cuid())
-  employeeNo     String         @unique
-  nameEn         String
-  nameKm         String?
-  photoUrl       String?
-  gender         Gender?
-  dob            DateTime?      @db.Date
-  phone          String?
-  email          String?
-  nationalId     String?
-  address        String?
-  departmentId   String
-  department     Department     @relation(fields: [departmentId], references: [id])
-  designationId  String
-  designation    Designation    @relation(fields: [designationId], references: [id])
-  contractTypeId String
-  contractType   ContractType   @relation(fields: [contractTypeId], references: [id])
-  statusId       String
-  status         EmployeeStatus @relation(fields: [statusId], references: [id])
-  locationId     String?
-  location       Location?      @relation(fields: [locationId], references: [id])
-  shiftId        String?
-  shift          Shift?         @relation(fields: [shiftId], references: [id])
-  joiningDate    DateTime       @db.Date
-  contractEnd    DateTime?      @db.Date
-  leavingDate    DateTime?      @db.Date
-  rateAmount     Decimal        @db.Decimal(12, 2)
-  rateBasis      RateBasis      @default(MONTH)
-  currency       String         @default("USD")
-  zkPin          String?        @unique
-  deletedAt      DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  rateHistory    RateHistory[]
-  transfers      BranchTransfer[]
-  user           User?
-  punches        AttendancePunch[]
-  daily          AttendanceDaily[]
+  id                 String            @id @default(cuid())
+  employeeNo         String            @unique
+  nameEn             String
+  nameKm             String?
+  photoUrl           String?
+  gender             Gender?
+  dob                DateTime?         @db.Date
+  phone              String?
+  email              String?
+  nationalId         String?
+  address            String?
+  departmentId       String
+  department         Department        @relation(fields: [departmentId], references: [id])
+  designationId      String
+  designation        Designation       @relation(fields: [designationId], references: [id])
+  contractTypeId     String
+  contractType       ContractType      @relation(fields: [contractTypeId], references: [id])
+  statusId           String
+  status             EmployeeStatus    @relation(fields: [statusId], references: [id])
+  locationId         String?
+  location           Location?         @relation(fields: [locationId], references: [id])
+  shiftId            String?
+  shift              Shift?            @relation(fields: [shiftId], references: [id])
+  scheduleTemplateId String?
+  scheduleTemplate   ScheduleTemplate? @relation(fields: [scheduleTemplateId], references: [id], onDelete: SetNull)
+  rosterEntries      RosterEntry[]
+  joiningDate        DateTime          @db.Date
+  contractEnd        DateTime?         @db.Date
+  leavingDate        DateTime?         @db.Date
+  rateAmount         Decimal           @db.Decimal(12, 2)
+  rateBasis          RateBasis         @default(MONTH)
+  currency           String            @default("USD")
+  zkPin              String?           @unique
+  deletedAt          DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  rateHistory        RateHistory[]
+  transfers          BranchTransfer[]
+  user               User?
+  punches            AttendancePunch[]
+  daily              AttendanceDaily[]
 
   @@index([departmentId])
   @@index([designationId])
@@ -223,18 +240,18 @@ model BranchTransfer {
 }
 
 model Device {
-  id         String       @id @default(cuid())
+  id         String            @id @default(cuid())
   name       String
   model      String?
   ip         String?
-  port       Int          @default(4370)
+  port       Int               @default(4370)
   serialNo   String?
-  mode       DeviceMode   @default(MOCK)
-  status     DeviceStatus @default(ONLINE)
+  mode       DeviceMode        @default(MOCK)
+  status     DeviceStatus      @default(ONLINE)
   locationId String?
-  location   Location?    @relation(fields: [locationId], references: [id])
+  location   Location?         @relation(fields: [locationId], references: [id])
   lastSyncAt DateTime?
-  isActive   Boolean      @default(true)
+  isActive   Boolean           @default(true)
   punches    AttendancePunch[]
   syncLogs   SyncLog[]
 }
@@ -320,4 +337,46 @@ model Announcement {
   sentToTelegram Boolean   @default(false)
 
   @@index([createdAt])
+}
+
+/// A weekly pattern: for each weekday either a working shift or a day off.
+/// A "personal" template is created behind the scenes when HR sets one employee's weekly days off.
+model ScheduleTemplate {
+  id         String                @id @default(cuid())
+  name       String
+  isActive   Boolean               @default(true)
+  isPersonal Boolean               @default(false)
+  createdAt  DateTime              @default(now())
+  days       ScheduleTemplateDay[]
+  employees  Employee[]
+}
+
+model ScheduleTemplateDay {
+  id         String           @id @default(cuid())
+  templateId String
+  template   ScheduleTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  /// 0 = Sunday ... 6 = Saturday
+  weekday    Int
+  kind       DayKind          @default(WORK)
+  /// empty means "the employee's own shift"
+  shiftId    String?
+  shift      Shift?           @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+
+  @@unique([templateId, weekday])
+}
+
+/// A change for one employee on one date: a different shift, a day off, or leave. It beats the weekly template and holidays.
+model RosterEntry {
+  id         String     @id @default(cuid())
+  employeeId String
+  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date       DateTime   @db.Date
+  kind       RosterKind
+  shiftId    String?
+  shift      Shift?     @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  note       String?
+  createdAt  DateTime   @default(now())
+
+  @@unique([employeeId, date])
+  @@index([date])
 }

@@ -32,6 +32,8 @@ const NAV: NavEntry[] = [
     children: [
       { href: "/attendance", label: "att.tab.punches", min: 1, tab: "punches" },
       { href: "/attendance?tab=daily", label: "att.tab.daily", min: 1, tab: "daily" },
+      { href: "/attendance/roster", label: "att.tab.roster", min: 1 },
+      { href: "/attendance/templates", label: "att.tab.templates", min: 2 },
       { href: "/attendance?tab=devices", label: "att.tab.devices", min: 1, tab: "devices" },
       { href: "/attendance/qr", label: "att.qr", min: 2 },
     ],

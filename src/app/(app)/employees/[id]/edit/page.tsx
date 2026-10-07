@@ -30,16 +30,17 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
     if (s && !lk.statuses.some((x) => x.id === s.id)) lk.statuses.push(s)
   }
   await keep()
+  const tplPersonal = e.scheduleTemplateId ? Boolean((await db.scheduleTemplate.findUnique({ where: { id: e.scheduleTemplateId }, select: { isPersonal: true } }))?.isPersonal) : false
   const values: FormValues = {
     employeeNo: e.employeeNo, nameEn: e.nameEn, nameKm: e.nameKm ?? "", gender: e.gender ?? "", dob: toInput(e.dob), phone: e.phone ?? "",
     email: e.email ?? "", nationalId: e.nationalId ?? "", address: e.address ?? "", departmentId: e.departmentId, designationId: e.designationId,
-    contractTypeId: e.contractTypeId, statusId: e.statusId, locationId: e.locationId ?? "", shiftId: e.shiftId ?? "", joiningDate: toInput(e.joiningDate),
+    contractTypeId: e.contractTypeId, statusId: e.statusId, locationId: e.locationId ?? "", shiftId: e.shiftId ?? "", scheduleTemplateId: e.scheduleTemplateId && tplPersonal ? "__personal" : (e.scheduleTemplateId ?? ""), joiningDate: toInput(e.joiningDate),
     contractEnd: toInput(e.contractEnd), leavingDate: toInput(e.leavingDate), rateAmount: String(e.rateAmount), rateBasis: e.rateBasis, currency: e.currency, zkPin: e.zkPin ?? "", photoUrl: e.photoUrl,
   }
   return (
     <>
       <PageHeader title={t("emp.editName", { name: e.nameEn })} description={e.employeeNo} />
-      <EmployeeForm id={e.id} values={values} lookups={lk} />
+      <EmployeeForm id={e.id} values={values} lookups={lk} personalTemplate={tplPersonal} />
     </>
   )
 }

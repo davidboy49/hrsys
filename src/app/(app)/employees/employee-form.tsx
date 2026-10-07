@@ -30,6 +30,7 @@ export type FormValues = {
   statusId: string
   locationId: string
   shiftId: string
+  scheduleTemplateId: string
   joiningDate: string
   contractEnd: string
   leavingDate: string
@@ -44,10 +45,13 @@ export function EmployeeForm({
   id,
   values,
   lookups,
+  personalTemplate = false,
 }: {
   id: string | null
   values: FormValues
-  lookups: { departments: Opt[]; designations: Opt[]; contractTypes: Opt[]; statuses: Opt[]; locations: Opt[]; shifts: Opt[] }
+  lookups: { departments: Opt[]; designations: Opt[]; contractTypes: Opt[]; statuses: Opt[]; locations: Opt[]; shifts: Opt[]; scheduleTemplates: Opt[] }
+  /** the person has their own weekly pattern set on the roster */
+  personalTemplate?: boolean
 }) {
   const t = useT()
   const [state, action, pending] = useActionState(saveEmployee.bind(null, id), {} as FormState)
@@ -175,6 +179,20 @@ export function EmployeeForm({
           {field("joiningDate", t("emp.joining"), text("joiningDate", { type: "date", required: true }))}
           {field("locationId", t("form.location"), select("locationId", lookups.locations, "—"))}
           {field("shiftId", t("form.shift"), select("shiftId", lookups.shifts, "—"))}
+          {field(
+            "scheduleTemplateId",
+            t("form.scheduleTemplate"),
+            <NativeSelect id="scheduleTemplateId" name="scheduleTemplateId" value={v.scheduleTemplateId} onChange={set("scheduleTemplateId")}>
+              {personalTemplate && <option value="__personal">{t("form.schedulePersonal")}</option>}
+              <option value="">{t("form.scheduleDefault")}</option>
+              {lookups.scheduleTemplates.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </NativeSelect>,
+            t("form.scheduleHint"),
+          )}
           {field("leavingDate", t("form.leavingDate"), text("leavingDate", { type: "date" }), t("form.leavingHint"))}
           {field("zkPin", t("form.zkPin"), text("zkPin", { className: "font-mono" }), t("form.zkPinHint"))}
         </div>

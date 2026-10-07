@@ -37,7 +37,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
   const { id } = await params
   const e = await db.employee.findFirst({
     where: { id, deletedAt: null },
-    include: { department: true, designation: true, contractType: true, status: true, location: true, shift: true },
+    include: { department: true, designation: true, contractType: true, status: true, location: true, shift: true, scheduleTemplate: { include: { days: true } } },
   })
   if (!e) notFound()
   const canEdit = atLeast(user.role, "HR")
@@ -109,6 +109,13 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
             {canEdit && <Item label={t("emp.rate")}>{fmtRate(e.rateAmount, e.rateBasis, e.currency, t(BASIS_KEY[e.rateBasis]))}</Item>}
             {e.leavingDate && <Item label={t("form.leavingDate")}>{fmtDate(e.leavingDate)}</Item>}
             <Item label={t("form.location")}>{e.location?.name}</Item>
+            <Item label={t("form.weeklyOff")}>
+              {(e.scheduleTemplate ? e.scheduleTemplate.days.filter((d) => d.kind === "OFF").map((d) => d.weekday) : [0])
+                .sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))
+                .map((d) => t(`wd.${d}`))
+                .join(", ") || t("sch.noDayOff")}
+              {e.scheduleTemplate && !e.scheduleTemplate.isPersonal ? ` · ${e.scheduleTemplate.name}` : ""}
+            </Item>
             <Item label={t("form.shift")}>{e.shift ? `${e.shift.name} (${e.shift.startTime}–${e.shift.endTime})` : ""}</Item>
             <Item label={t("form.zkPin")}>
               <span className="font-mono">{e.zkPin}</span>

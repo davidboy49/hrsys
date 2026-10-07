@@ -15,7 +15,7 @@ export default async function NewEmployeePage() {
   const active = lk.statuses.find((s) => s.code === "ACTIVE") ?? lk.statuses[0]
   const values: FormValues = {
     employeeNo: no, nameEn: "", nameKm: "", gender: "", dob: "", phone: "", email: "", nationalId: "", address: "",
-    departmentId: "", designationId: "", contractTypeId: "", statusId: active?.id ?? "", locationId: "", shiftId: "",
+    departmentId: "", designationId: "", contractTypeId: "", statusId: active?.id ?? "", locationId: "", shiftId: "", scheduleTemplateId: "",
     joiningDate: new Date().toISOString().slice(0, 10), contractEnd: "", leavingDate: "", rateAmount: "", rateBasis: "MONTH", currency: cur?.value ?? "USD", zkPin: "", photoUrl: null,
   }
   return (

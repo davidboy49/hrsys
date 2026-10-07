@@ -101,14 +101,15 @@ export async function nextEmployeeNo() {
 }
 
 export async function lookups() {
-  const [departments, designations, contractTypes, statuses, locations, shifts] = await Promise.all([
+  const [departments, designations, contractTypes, statuses, locations, shifts, scheduleTemplates] = await Promise.all([
     db.department.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     db.designation.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     db.contractType.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     db.employeeStatus.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     db.location.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     db.shift.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    db.scheduleTemplate.findMany({ where: { isActive: true, isPersonal: false }, orderBy: { name: "asc" } }),
   ])
-  return { departments, designations, contractTypes, statuses, locations, shifts }
+  return { departments, designations, contractTypes, statuses, locations, shifts, scheduleTemplates }
 }
 export type Lookups = Awaited<ReturnType<typeof lookups>>
